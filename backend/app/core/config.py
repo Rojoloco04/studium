@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str = "gemini-3.1-flash-lite"
     canvas_token_encryption_key: str
-    frontend_url: str = "http://localhost:3000"
+    allowed_origins: str = "http://localhost:3000"
 
     class Config:
         env_file = ".env"
