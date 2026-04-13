@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'CourseWise',
+  title: 'Studium',
   description: 'AI-powered course tracker and study planner',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'CourseWise',
+    title: 'Studium',
   },
 };
 

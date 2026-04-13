@@ -6,7 +6,7 @@ from app.api import canvas, health
 settings = get_settings()
 
 app = FastAPI(
-    title="CourseWise API",
+    title="Studium API",
     version="0.1.0",
     docs_url="/docs",
     redoc_url=None,

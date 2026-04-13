@@ -1,4 +1,4 @@
--- CourseWise Supabase Schema
+-- Studium Supabase Schema
 -- Run this in the Supabase SQL editor: Dashboard → SQL → New query
 
 -- Enable UUID generation

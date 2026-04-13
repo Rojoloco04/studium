@@ -1,4 +1,4 @@
-# CourseWise
+# Studium
 
 AI-powered course tracker and study planner. Syncs with Canvas, parses syllabi with Gemini, and schedules study blocks into Google Calendar.
 
@@ -18,7 +18,7 @@ AI-powered course tracker and study planner. Syncs with Canvas, parses syllabi w
 ## Project Structure
 
 ```
-coursewise/
+studium/
 ├── frontend/          # Next.js app → Vercel
 │   ├── src/
 │   │   ├── app/       # App Router pages
@@ -76,7 +76,7 @@ Frontend runs at http://localhost:3000.
 
 1. Log into your Canvas instance
 2. Go to Account → Settings → Approved Integrations → + New Access Token
-3. Name it "CourseWise", generate, copy the token
+3. Name it "Studium", generate, copy the token
 4. In the app: Dashboard → Canvas Setup → paste your domain + token
 
 ---

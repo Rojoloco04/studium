@@ -32,7 +32,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
         <span className="font-display font-700 text-lg tracking-tight">
-          course<span className="accent-gradient">wise</span>
+          studi<span className="accent-gradient">um</span>
         </span>
         <div className="flex items-center gap-3">
           <Link
@@ -72,7 +72,7 @@ export default function Home() {
           </h1>
 
           <p className="text-[var(--text-dim)] text-lg leading-relaxed mb-10 max-w-xl mx-auto">
-            CourseWise syncs with Canvas, parses your syllabi, and builds a real study schedule
+            Studium syncs with Canvas, parses your syllabi, and builds a real study schedule
             — so you stop guessing what to work on and when.
           </p>
 
@@ -117,7 +117,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-[var(--border)] px-6 py-4 text-center">
         <span className="text-[var(--text-faint)] text-xs font-mono">
-          coursewise — built by Jack
+          studium — built by Jack
         </span>
       </footer>
     </main>

@@ -1,6 +1,6 @@
 {
-  "name": "CourseWise",
-  "short_name": "CourseWise",
+  "name": "Studium",
+  "short_name": "Studium",
   "description": "AI-powered course tracker and study planner",
   "start_url": "/",
   "display": "standalone",

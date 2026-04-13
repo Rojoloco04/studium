@@ -1,0 +1,11 @@
+Week 1 — Foundation
+Project scaffold, Vercel + Railway deployed, Supabase connected, Google OAuth login working. Nothing AI yet, just the skeleton live at a real URL. This matters for your portfolio — a deployed URL beats a localhost screenshot.
+Week 2 — Canvas Integration
+Personal access token flow, pull courses + assignments + due dates, store in Postgres, display in a clean dashboard. This is the core data layer everything else builds on. If Canvas doesn't work, you find out now instead of week 5.
+Week 3 — Syllabus Parser
+PDF upload → Gemini extraction → fill gaps Canvas doesn't cover (grading weights, attendance policy, exam dates that aren't in Canvas yet). This is where your GCP credits start getting used.
+Week 4 — Smart Scheduler
+Take the assignment data and generate a study plan into Google Calendar. This is where your existing Calendar integration from declareLife is directly reusable — don't start from scratch.
+Week 5 — Grade Calculator + Feedback Loop
+Grade estimator with scenario modeling, and start tracking estimated vs actual time spent so the scheduler improves over time.
+Week 6+ — Polish, professor insights, study buddy chat, etc.

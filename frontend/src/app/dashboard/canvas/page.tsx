@@ -81,7 +81,7 @@ export default function CanvasSetupPage() {
           </li>
           <li className="flex gap-2">
             <span className="font-mono text-[var(--accent)] flex-shrink-0">3.</span>
-            Name it <strong className="text-[var(--text)]">CourseWise</strong>, set an expiry, and copy the token
+            Name it <strong className="text-[var(--text)]">Studium</strong>, set an expiry, and copy the token
           </li>
         </ol>
         <a
