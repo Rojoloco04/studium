@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   BookOpen,
@@ -28,6 +30,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { staleTime: 1000 * 60 * 5 } },
+      })
+  );
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -36,6 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <QueryClientProvider client={queryClient}>
     <div className="flex h-dvh bg-[var(--background)]">
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--surface)]">
@@ -97,5 +106,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
     </div>
+    </QueryClientProvider>
   );
 }
