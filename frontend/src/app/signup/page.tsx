@@ -34,7 +34,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -49,24 +49,8 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      setDone(true);
+      router.push('/dashboard');
     }
-  }
-
-  if (done) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="w-12 h-12 rounded-full bg-[var(--success)] bg-opacity-15 flex items-center justify-center mx-auto mb-4">
-            <Check size={20} className="text-[var(--success)]" />
-          </div>
-          <h2 className="font-display font-700 text-xl mb-2">Check your email</h2>
-          <p className="text-[var(--text-dim)] text-sm">
-            We sent a confirmation link to <strong className="text-[var(--text)]">{email}</strong>
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
