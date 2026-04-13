@@ -1,6 +1,6 @@
 # Studium
 
-AI-powered course tracker and study planner. Syncs with Canvas, parses syllabi with Gemini, and schedules study blocks into Google Calendar.
+AI-powered course tracker and study planner. Syncs with Canvas LMS, parses syllabi with Gemini, and schedules study blocks into Google Calendar.
 
 ## Stack
 
@@ -8,33 +8,78 @@ AI-powered course tracker and study planner. Syncs with Canvas, parses syllabi w
 |---|---|
 | Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS |
 | Backend | FastAPI + Python 3.12 |
-| Database | Supabase (Postgres) |
+| Database | Supabase (Postgres + Auth + Storage) |
 | Auth | Supabase Auth (email + Google OAuth) |
-| AI | Gemini 2.5 Flash / Pro (GCP credits) |
+| AI | Gemini 3.1 Flash Lite |
 | Frontend deploy | Vercel |
 | Backend deploy | Railway |
-| PWA | next-pwa |
 
 ## Project Structure
 
 ```
 studium/
-├── frontend/          # Next.js app → Vercel
-│   ├── src/
-│   │   ├── app/       # App Router pages
-│   │   ├── components/
-│   │   └── lib/       # Supabase clients, utilities
-│   └── public/        # PWA manifest, icons
-└── backend/           # FastAPI → Railway
+├── frontend/
+│   └── src/
+│       ├── app/
+│       │   ├── page.tsx              # Landing
+│       │   ├── login/page.tsx
+│       │   ├── signup/page.tsx
+│       │   └── dashboard/
+│       │       ├── layout.tsx
+│       │       ├── page.tsx          # Overview
+│       │       ├── canvas/page.tsx   # Canvas setup
+│       │       ├── courses/page.tsx
+│       │       ├── assignments/page.tsx
+│       │       ├── grades/page.tsx
+│       │       ├── planner/page.tsx
+│       │       └── upload/page.tsx   # Syllabus PDF upload
+│       ├── lib/supabase/
+│       │   ├── client.ts             # Browser Supabase client
+│       │   └── server.ts             # RSC/server-action client
+│       └── middleware.ts             # Auth route protection
+└── backend/
+    ├── main.py                       # FastAPI app + CORS
     ├── app/
-    │   ├── api/       # Route handlers
-    │   ├── core/      # Config, auth, supabase, encryption
-    │   ├── models/    # Pydantic schemas
-    │   └── services/  # Canvas, Gemini, Calendar logic
-    ├── supabase/
-    │   └── schema.sql # Run once in Supabase SQL editor
-    └── main.py
+    │   ├── api/
+    │   │   ├── health.py             # GET /health
+    │   │   └── canvas.py             # POST /api/canvas/connect, /sync, GET /status
+    │   ├── core/
+    │   │   ├── config.py             # Pydantic settings (reads .env)
+    │   │   ├── auth.py               # JWT → user_id via Supabase
+    │   │   ├── supabase.py           # Supabase service-role client
+    │   │   └── encryption.py         # Fernet encrypt/decrypt for Canvas tokens
+    │   ├── models/
+    │   │   └── schemas.py            # Pydantic request/response models
+    │   └── services/
+    │       └── canvas.py             # Canvas API client + sync logic
+    └── supabase/
+        └── schema.sql                # Full DB schema (run once in SQL editor)
 ```
+
+## What's Built
+
+### Backend
+- **Canvas integration** — token validation, Fernet-encrypted storage, full course + assignment sync with pagination
+- **Auth** — Supabase JWT verification on every protected route (`Authorization: Bearer <token>`)
+- **Config** — all secrets via `.env`, including `GEMINI_MODEL` (default: `gemini-3.1-flash-lite`)
+
+### Frontend
+- **Auth flows** — login, signup, route protection via middleware
+- **Dashboard** — overview, courses, assignments, grades, planner, syllabus upload pages (UI scaffolded)
+- **Canvas setup** — domain + token form, sends JWT to backend
+
+### Database
+Tables: `canvas_tokens`, `courses`, `assignments`, `syllabi`, `study_blocks`
+- RLS enabled on all tables (users see only their own rows)
+- `updated_at` triggers on mutable tables
+- Indexes on `assignments(user_id, due_at)` and `study_blocks(user_id, start_at)`
+
+## What's Not Built Yet
+
+- Gemini syllabus parser (service + `/api/syllabus` routes)
+- Google Calendar sync
+- Grade estimator / feedback loop
+- Live data on dashboard stat cards
 
 ## Setup
 
@@ -45,77 +90,60 @@ studium/
 3. Enable Google OAuth under Authentication → Providers
 4. Add your site URL and redirect URLs under Authentication → URL Configuration
 
-### 2. Backend (local)
+### 2. Backend
 
 ```bash
 cd backend
 python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-# Fill in .env with your keys
-# Generate encryption key:
+# Fill in .env:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+#   GEMINI_API_KEY
+#   CANVAS_TOKEN_ENCRYPTION_KEY  (see below)
+#   FRONTEND_URL
+
+# Generate Fernet key:
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-uvicorn main:app --reload
+
+uvicorn main:app --reload   # http://localhost:8000, docs at /docs
 ```
 
-Backend runs at http://localhost:8000. API docs at http://localhost:8000/docs.
-
-### 3. Frontend (local)
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
 cp .env.local.example .env.local
-# Fill in Supabase URL, anon key, and backend URL
-npm run dev
+# Fill in: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_API_URL
+npm run dev   # http://localhost:3000
 ```
 
-Frontend runs at http://localhost:3000.
+### 4. Connect Canvas
 
-### 4. Canvas
+1. Log into Canvas → Account → Settings → Approved Integrations → + New Access Token
+2. Name it "Studium", copy the token
+3. In the app: Dashboard → Canvas Setup → enter your domain + token
 
-1. Log into your Canvas instance
-2. Go to Account → Settings → Approved Integrations → + New Access Token
-3. Name it "Studium", generate, copy the token
-4. In the app: Dashboard → Canvas Setup → paste your domain + token
+## API Endpoints
 
----
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/health` | — | Health check |
+| POST | `/api/canvas/connect` | JWT | Validate token, store encrypted, initial sync |
+| POST | `/api/canvas/sync` | JWT | Re-sync courses + assignments |
+| GET | `/api/canvas/status` | JWT | Connection status + counts |
 
 ## Deployment
 
 ### Backend → Railway
 
-1. Push `backend/` to a GitHub repo (or the monorepo root)
-2. Create a new Railway project → Deploy from GitHub
-3. Set environment variables in Railway dashboard (same as `.env`)
-4. Railway auto-detects `railway.toml` and builds the Dockerfile
+1. Push repo to GitHub, create Railway project → Deploy from GitHub
+2. Set env vars in Railway dashboard (same as `.env`)
+3. Railway auto-detects and builds
 
 ### Frontend → Vercel
 
-1. Import the repo in Vercel, set root to `frontend/`
-2. Set environment variables (Supabase URL, anon key, Railway backend URL)
+1. Import repo, set root to `frontend/`
+2. Set env vars: Supabase URL, anon key, Railway backend URL
 3. Deploy
-
----
-
-## Build Roadmap
-
-| Week | Feature |
-|---|---|
-| 1 | ✅ Scaffold, auth, deployed skeleton |
-| 2 | Canvas integration — real courses + assignments |
-| 3 | Syllabus PDF parser (Gemini) |
-| 4 | Smart study scheduler → Google Calendar |
-| 5 | Grade estimator + feedback loop |
-| 6+ | Professor insights, study buddy chat, mobile polish |
-
----
-
-## Generating the Fernet encryption key
-
-```python
-from cryptography.fernet import Fernet
-print(Fernet.generate_key().decode())
-```
-
-Paste the output into `CANVAS_TOKEN_ENCRYPTION_KEY` in your `.env`.
