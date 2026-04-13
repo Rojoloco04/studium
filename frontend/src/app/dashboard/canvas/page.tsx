@@ -51,7 +51,7 @@ export default function CanvasSetupPage() {
     return (
       <div className="p-6 max-w-lg mx-auto">
         <div className="surface-border rounded-xl p-10 text-center">
-          <div className="w-12 h-12 rounded-full bg-[var(--success)] bg-opacity-15 flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 rounded-full bg-[var(--success)]/15 flex items-center justify-center mx-auto mb-4">
             <Check size={22} className="text-[var(--success)]" />
           </div>
           <h2 className="font-display font-700 text-xl mb-2">Canvas connected</h2>
