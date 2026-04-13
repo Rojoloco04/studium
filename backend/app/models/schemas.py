@@ -45,7 +45,9 @@ class Assignment(BaseModel):
 
 # Sync status
 class SyncStatus(BaseModel):
-    last_synced: Optional[datetime]
-    courses_count: int
-    assignments_count: int
     connected: bool
+    domain: Optional[str] = None
+    canvas_user_name: Optional[str] = None
+    last_synced: Optional[datetime] = None
+    courses_count: int = 0
+    assignments_count: int = 0

@@ -13,7 +13,7 @@ import {
   Upload,
   TrendingUp,
   LogOut,
-  GraduationCap,
+  Settings,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -38,6 +38,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 
   async function handleSignOut() {
+    localStorage.removeItem('studium_stay_signed_in');
+    localStorage.removeItem('studium_ephemeral');
+    sessionStorage.removeItem('studium_session_active');
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();
@@ -80,16 +83,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Bottom */}
         <div className="px-2 py-3 border-t border-[var(--border)] space-y-0.5">
           <Link
-            href="/dashboard/canvas"
+            href="/dashboard/settings"
             className={clsx(
               'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
-              pathname === '/dashboard/canvas'
+              pathname === '/dashboard/settings'
                 ? 'bg-[var(--accent-dim)] text-[var(--accent)]'
                 : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]'
             )}
           >
-            <GraduationCap size={15} />
-            Canvas Setup
+            <Settings size={15} />
+            Settings
           </Link>
           <button
             onClick={handleSignOut}

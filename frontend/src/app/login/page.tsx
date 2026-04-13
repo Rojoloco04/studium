@@ -11,6 +11,7 @@ export default function LoginPage() {
   const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [staySignedIn, setStaySignedIn] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,12 +24,25 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
+      if (staySignedIn) {
+        localStorage.removeItem('studium_ephemeral');
+        sessionStorage.removeItem('studium_session_active');
+        localStorage.setItem('studium_stay_signed_in', '1');
+      } else {
+        localStorage.removeItem('studium_stay_signed_in');
+        localStorage.setItem('studium_ephemeral', '1');
+        sessionStorage.setItem('studium_session_active', '1');
+      }
       router.push('/dashboard');
       router.refresh();
     }
   }
 
   async function handleGoogleLogin() {
+    // OAuth always persists
+    localStorage.removeItem('studium_ephemeral');
+    sessionStorage.removeItem('studium_session_active');
+    localStorage.setItem('studium_stay_signed_in', '1');
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${location.origin}/auth/callback` },
@@ -72,6 +86,26 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
           </div>
+
+          {/* Stay signed in */}
+          <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1">
+            <div className="relative flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={staySignedIn}
+                onChange={(e) => setStaySignedIn(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-4 h-4 rounded border border-[var(--border-strong)] bg-[var(--surface)] peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)] transition-colors flex items-center justify-center">
+                {staySignedIn && (
+                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                    <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-sm text-[var(--text-dim)]">Stay signed in</span>
+          </label>
 
           {error && (
             <p className="text-[var(--danger)] text-xs font-mono">{error}</p>

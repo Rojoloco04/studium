@@ -1,0 +1,5 @@
+daily digest with notification
+implement all pages
+RMP / course planning / degree planning integration
+grade estimator using syllabus
+chatbot (3.1 flash lite)

@@ -33,13 +33,22 @@ async def canvas_sync(user_id: str = Depends(get_current_user_id)):
 @router.get("/status", response_model=SyncStatus)
 async def canvas_status(user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
-    token_row = db.table("canvas_tokens").select("updated_at").eq("user_id", user_id).maybe_single().execute()
+    token_row = db.table("canvas_tokens").select("updated_at,domain,canvas_user_name").eq("user_id", user_id).maybe_single().execute()
     courses = db.table("courses").select("id", count="exact").eq("user_id", user_id).execute()
     assignments = db.table("assignments").select("id", count="exact").eq("user_id", user_id).execute()
 
     return SyncStatus(
         connected=token_row.data is not None,
+        domain=token_row.data["domain"] if token_row.data else None,
+        canvas_user_name=token_row.data["canvas_user_name"] if token_row.data else None,
         last_synced=token_row.data["updated_at"] if token_row.data else None,
         courses_count=courses.count or 0,
         assignments_count=assignments.count or 0,
     )
+
+
+@router.delete("/disconnect")
+async def canvas_disconnect(user_id: str = Depends(get_current_user_id)):
+    db = get_supabase()
+    db.table("canvas_tokens").delete().eq("user_id", user_id).execute()
+    return {"success": True}

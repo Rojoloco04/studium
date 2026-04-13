@@ -27,22 +27,25 @@ studium/
 │       │   └── dashboard/
 │       │       ├── layout.tsx
 │       │       ├── page.tsx          # Overview
-│       │       ├── canvas/page.tsx   # Canvas setup
+│       │       ├── settings/page.tsx # Canvas mgmt + theme toggle
 │       │       ├── courses/page.tsx
 │       │       ├── assignments/page.tsx
 │       │       ├── grades/page.tsx
 │       │       ├── planner/page.tsx
 │       │       └── upload/page.tsx   # Syllabus PDF upload
-│       ├── lib/supabase/
-│       │   ├── client.ts             # Browser Supabase client
-│       │   └── server.ts             # RSC/server-action client
+│       ├── lib/
+│       │   ├── supabase/
+│       │   │   ├── client.ts         # Browser Supabase client
+│       │   │   └── server.ts         # RSC/server-action client
+│       │   ├── theme.tsx             # ThemeProvider (light/dark)
+│       │   └── session-guard.tsx     # Persistent session handling
 │       └── middleware.ts             # Auth route protection
 └── backend/
     ├── main.py                       # FastAPI app + CORS
     ├── app/
     │   ├── api/
     │   │   ├── health.py             # GET /health
-    │   │   └── canvas.py             # POST /api/canvas/connect, /sync, GET /status
+    │   │   └── canvas.py             # POST /connect, /sync; GET /status; DELETE /disconnect
     │   ├── core/
     │   │   ├── config.py             # Pydantic settings (reads .env)
     │   │   ├── auth.py               # JWT → user_id via Supabase
@@ -64,9 +67,11 @@ studium/
 - **Config** — all secrets via `.env`, including `GEMINI_MODEL` (default: `gemini-3.1-flash-lite`)
 
 ### Frontend
-- **Auth flows** — login, signup, route protection via middleware
+- **Auth flows** — login, signup, route protection via middleware; `SessionGuard` for persistence
 - **Dashboard** — overview, courses, assignments, grades, planner, syllabus upload pages (UI scaffolded)
-- **Canvas setup** — domain + token form, sends JWT to backend
+- **Settings page** — Canvas connection management (connect/disconnect) + light/dark theme toggle
+- **Theme** — light mode default, dark mode via `[data-theme="dark"]`; `ThemeProvider` persists to `localStorage`
+- **Favicon** — `src/app/icon.png` served via Next.js App Router metadata
 
 ### Database
 Tables: `canvas_tokens`, `courses`, `assignments`, `syllabi`, `study_blocks`
@@ -123,7 +128,7 @@ npm run dev   # http://localhost:3000
 
 1. Log into Canvas → Account → Settings → Approved Integrations → + New Access Token
 2. Name it "Studium", copy the token
-3. In the app: Dashboard → Canvas Setup → enter your domain + token
+3. In the app: Dashboard → Settings → enter your domain + token
 
 ## API Endpoints
 
@@ -132,7 +137,8 @@ npm run dev   # http://localhost:3000
 | GET | `/health` | — | Health check |
 | POST | `/api/canvas/connect` | JWT | Validate token, store encrypted, initial sync |
 | POST | `/api/canvas/sync` | JWT | Re-sync courses + assignments |
-| GET | `/api/canvas/status` | JWT | Connection status + counts |
+| GET | `/api/canvas/status` | JWT | Connection status, domain, username + counts |
+| DELETE | `/api/canvas/disconnect` | JWT | Remove stored Canvas token |
 
 ## Deployment
 

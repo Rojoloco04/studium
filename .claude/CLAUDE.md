@@ -21,7 +21,7 @@ studium/
 ├── frontend/          # Next.js app → Vercel
 │   └── src/
 │       ├── app/       # App Router pages (landing, login, signup, dashboard/*)
-│       ├── lib/       # Supabase clients (client.ts, server.ts)
+│       ├── lib/       # Supabase clients, theme.tsx, session-guard.tsx
 │       └── middleware.ts
 ├── backend/           # FastAPI → Railway
 │   ├── app/
@@ -38,11 +38,15 @@ studium/
 
 ## What's built
 
-- Canvas connect/sync/status endpoints (JWT-authenticated)
+- Canvas connect/sync/status/disconnect endpoints (JWT-authenticated)
 - Fernet encryption of Canvas tokens at rest
 - Full course + assignment sync with Canvas pagination
 - All dashboard pages scaffolded (courses, assignments, grades, planner, upload)
+- Settings page (canvas management, theme toggle) — replaces old "Canvas Setup" nav entry
 - Auth flows (login, signup, middleware-based route protection)
+- Light/dark theme via `ThemeProvider` (`lib/theme.tsx`); CSS vars split into `:root` (light) and `[data-theme="dark"]`
+- `SessionGuard` (`lib/session-guard.tsx`) for persistent session handling
+- App favicon via `src/app/icon.png` (Next.js App Router convention)
 
 ## Not yet built
 
@@ -75,4 +79,5 @@ npm run dev                 # http://localhost:3000
 - Supabase client helpers: `frontend/src/lib/supabase/client.ts` (browser) and `server.ts` (RSC/server actions)
 - Canvas access tokens are Fernet-encrypted at rest (`app/core/encryption.py`)
 - Gemini model name lives in config: `settings.gemini_model` (default `gemini-3.1-flash-lite`)
+- Theme is controlled by `data-theme` attribute on `<html>`; `ThemeProvider` reads/writes `localStorage`
 - Environment: backend uses `.env`, frontend uses `.env.local`
