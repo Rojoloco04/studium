@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme';
 import { SessionGuard } from '@/lib/session-guard';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'Studium',
@@ -45,6 +46,7 @@ export default function RootLayout({
           <SessionGuard />
           {children}
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
