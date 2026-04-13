@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <div className="px-4 py-5 border-b border-[var(--border)]">
           <span className="font-display font-800 text-base">
-            studi<span className="accent-gradient">um</span>
+            studium
           </span>
         </div>
 

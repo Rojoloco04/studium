@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <span className="font-display font-800 text-2xl">
-            course<span className="accent-gradient">wise</span>
+            studium
           </span>
           <p className="text-[var(--text-dim)] text-sm mt-2">Welcome back</p>
         </div>
