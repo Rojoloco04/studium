@@ -32,7 +32,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
         <span className="font-display font-700 text-lg tracking-tight">
-          studi<span className="accent-gradient">um</span>
+          studium
         </span>
         <div className="flex items-center gap-3">
           <Link
