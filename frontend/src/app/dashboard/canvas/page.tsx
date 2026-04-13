@@ -31,8 +31,12 @@ export default function CanvasSetupPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || 'Failed to connect');
+        const contentType = res.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          throw new Error(data.detail || 'Failed to connect');
+        }
+        throw new Error(`Server error (${res.status}) — check that the API URL is configured correctly`);
       }
 
       setSuccess(true);
