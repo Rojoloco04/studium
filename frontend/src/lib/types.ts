@@ -5,7 +5,7 @@ export type Course = {
   name: string;
   course_code: string;
   term: string | null;
-  current_grade: number | null;
+  current_grade: string | null;
   current_score: number | null;
   created_at: string;
 };
