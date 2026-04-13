@@ -2,6 +2,11 @@ daily digest with notification
 implement all pages
 - dashboard (needs to not always say good morning)
 - etc.
-RMP / course planning / degree planning integration
-grade estimator using syllabus
+RMP integration
+course/degree planning 
 chatbot (3.1 flash lite)
+
+using syllabus:
+- grade estimation
+- grade calculation based on scale
+- assignment overview?

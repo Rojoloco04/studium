@@ -62,6 +62,15 @@ class CanvasService:
                 params = {}
         return assignments
 
+    async def get_assignment_groups(self, course_id: int) -> list[dict[str, Any]]:
+        """Fetch assignment groups (categories with weights) for a single course."""
+        url = f"{self.domain}/api/v1/courses/{course_id}/assignment_groups"
+        params = {"per_page": 100}
+        async with httpx.AsyncClient(timeout=CANVAS_TIMEOUT) as client:
+            res = await client.get(url, headers=self.headers, params=params)
+            res.raise_for_status()
+            return res.json()
+
 
 def _parse_next_link(link_header: str) -> str | None:
     """Parse the Canvas Link header to get the next page URL."""
@@ -118,6 +127,10 @@ async def sync_user(user_id: str) -> dict:
     service = CanvasService(row.data["domain"], token)
     courses = await service.get_courses()
     synced = await _sync_courses(user_id, service, courses)
+
+    # Touch the token row so updated_at (= last_synced) reflects this sync.
+    db.table("canvas_tokens").update({"canvas_user_id": row.data["canvas_user_id"]}).eq("user_id", user_id).execute()
+
     return {"courses_synced": synced}
 
 
@@ -125,6 +138,20 @@ async def _sync_courses(user_id: str, service: CanvasService, raw_courses: list)
     """Upsert courses and their assignments into Supabase."""
     db = get_supabase()
     synced = 0
+
+    # One query to snapshot every assignment the user has manually marked done.
+    # Used below so a sync never flips a manual mark back to false.
+    existing_rows = (
+        db.table("assignments")
+        .select("canvas_id,submitted")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    manually_submitted: set[int] = {
+        row["canvas_id"]
+        for row in (existing_rows.data or [])
+        if row["submitted"]
+    }
 
     for c in raw_courses:
         if c.get("access_restricted_by_date"):
@@ -144,15 +171,36 @@ async def _sync_courses(user_id: str, service: CanvasService, raw_courses: list)
             "current_score": enrollment.get("computed_current_score"),
         }, on_conflict="canvas_id,user_id").execute()
 
-        # Fetch and store assignments for this course
-        assignments = await service.get_assignments(c["id"])
+        # Fetch course UUID (needed for assignment groups and assignments)
         course_row = db.table("courses").select("id").eq("canvas_id", c["id"]).eq("user_id", user_id).single().execute()
         if not course_row.data:
             continue
 
         course_uuid = course_row.data["id"]
+
+        # Fetch and store assignment groups (grade categories with weights)
+        groups = await service.get_assignment_groups(c["id"])
+        # canvas_group_id -> our UUID lookup for linking assignments
+        group_uuid_map: dict[int, str] = {}
+        for g in groups:
+            db.table("assignment_groups").upsert({
+                "canvas_id": g["id"],
+                "course_id": course_uuid,
+                "user_id": user_id,
+                "name": g.get("name", "Untitled"),
+                "group_weight": g.get("group_weight", 0),
+            }, on_conflict="canvas_id,user_id").execute()
+            group_row = db.table("assignment_groups").select("id").eq("canvas_id", g["id"]).eq("user_id", user_id).single().execute()
+            if group_row.data:
+                group_uuid_map[g["id"]] = group_row.data["id"]
+
+        assignments = await service.get_assignments(c["id"])
         for a in assignments:
             submission = a.get("submission") or {}
+            canvas_group_id = a.get("assignment_group_id")
+            canvas_submitted = submission.get("submitted_at") is not None
+            # Preserve any manual mark; Canvas can only flip this to True.
+            keep_submitted = canvas_submitted or (a["id"] in manually_submitted)
             db.table("assignments").upsert({
                 "canvas_id": a["id"],
                 "course_id": course_uuid,
@@ -162,7 +210,8 @@ async def _sync_courses(user_id: str, service: CanvasService, raw_courses: list)
                 "points_possible": a.get("points_possible"),
                 "submission_types": a.get("submission_types", []),
                 "score": submission.get("score"),
-                "submitted": submission.get("submitted_at") is not None,
+                "submitted": keep_submitted,
+                "assignment_group_id": group_uuid_map.get(canvas_group_id) if canvas_group_id else None,
             }, on_conflict="canvas_id,user_id").execute()
 
         synced += 1

@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import type { Assignment, Course } from '@/lib/types';
+import type { Assignment, AssignmentGroup, Course } from '@/lib/types';
 
 // Query keys — centralised so every page uses the same cache bucket.
 export const QK = {
   canvasConnected: ['canvas', 'connected'] as const,
   courses: ['courses'] as const,
   assignments: ['assignments'] as const,
+  assignmentGroups: ['assignment_groups'] as const,
 };
 
 function getSupabase() {
@@ -66,12 +67,33 @@ export function useAssignments() {
       const { data, error } = await supabase
         .from('assignments')
         .select(
-          'id, name, due_at, points_possible, score, submitted, submission_types, course_id, estimated_hours, actual_hours, courses(name, course_code)'
+          'id, name, due_at, points_possible, score, submitted, submission_types, course_id, assignment_group_id, estimated_hours, actual_hours, courses(name, course_code)'
         )
         .eq('user_id', user.id)
         .order('due_at', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data as unknown as Assignment[]) ?? [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// ─── Assignment groups ───────────────────────────────────────────────────────
+
+export function useAssignmentGroups() {
+  return useQuery({
+    queryKey: QK.assignmentGroups,
+    queryFn: async () => {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [] as AssignmentGroup[];
+      const { data, error } = await supabase
+        .from('assignment_groups')
+        .select('id, canvas_id, course_id, name, group_weight')
+        .eq('user_id', user.id)
+        .order('name');
+      if (error) throw error;
+      return (data as AssignmentGroup[]) ?? [];
     },
     staleTime: 1000 * 60 * 5,
   });

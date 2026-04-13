@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useCourses, useAssignments } from '@/lib/queries';
+import { useCourses, useAssignments, useToggleSubmitted } from '@/lib/queries';
 import type { Assignment } from '@/lib/types';
 import {
   ChevronLeft,
@@ -80,6 +80,7 @@ export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: courses = [], isLoading: loadingCourses } = useCourses();
   const { data: allAssignments = [], isLoading: loadingAssignments } = useAssignments();
+  const toggleSubmitted = useToggleSubmitted();
 
   const [filter, setFilter] = useState<DetailFilter>('upcoming');
 
@@ -262,12 +263,14 @@ export default function CourseDetailPage() {
                   const now = new Date();
                   const past = !!a.due_at && new Date(a.due_at) < now;
                   const finished = isFinished(a);
+                  const canUnmark = a.submitted && a.score == null;
+                  const canToggle = !finished || canUnmark;
                   const { text: dueText, color: dueColor } = formatDue(a.due_at, finished);
 
                   return (
                     <div
                       key={a.id}
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--surface-2)] transition-colors"
+                      className="group flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--surface-2)] transition-colors"
                     >
                       {/* Status icon */}
                       <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
@@ -307,10 +310,10 @@ export default function CourseDetailPage() {
                         {submissionIcon(a.submission_types)}
                       </div>
 
-                      {/* Score */}
+                      {/* Score + hover action */}
                       <div className="text-right flex-shrink-0 hidden sm:block min-w-[120px]">
                         {a.points_possible != null && (
-                          <span className="text-xs font-mono">
+                          <span className={clsx('text-xs font-mono', canToggle && 'group-hover:hidden')}>
                             {a.score != null ? (
                               <>
                                 <span
@@ -336,6 +339,16 @@ export default function CourseDetailPage() {
                               </span>
                             )}
                           </span>
+                        )}
+                        {canToggle && (
+                          <button
+                            onClick={() =>
+                              toggleSubmitted.mutate({ id: a.id, submitted: !a.submitted })
+                            }
+                            className="hidden group-hover:inline text-xs font-medium text-[var(--text-faint)] hover:text-[var(--accent)] transition-colors"
+                          >
+                            {canUnmark ? 'Unmark' : 'Mark done'}
+                          </button>
                         )}
                       </div>
                     </div>

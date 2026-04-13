@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/lib/theme';
 import {
@@ -13,6 +14,7 @@ import {
   Moon,
   Sun,
   Shield,
+  RefreshCw,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────
@@ -48,6 +50,7 @@ function CanvasSection() {
   const [token, setToken] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -87,6 +90,29 @@ function CanvasSection() {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setConnecting(false);
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    setError('');
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API}/api/canvas/sync`, { method: 'POST', headers });
+      if (!res.ok) throw new Error('Sync failed');
+      // Await status refetch so "last synced" updates immediately in the card.
+      await queryClient.refetchQueries({ queryKey: ['canvas-status'] });
+      // Invalidate the rest in the background — other pages pick up fresh data.
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['assignment_groups'] });
+      toast.success('Canvas synced');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sync failed';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -162,8 +188,26 @@ function CanvasSection() {
           )}
         </div>
 
-        {/* Disconnect */}
-        {!confirmDisconnect ? (
+        {/* Sync / Disconnect */}
+        {error && (
+          <div className="flex items-center gap-2 text-[var(--danger)] text-xs">
+            <AlertCircle size={13} />
+            {error}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing…' : 'Sync now'}
+          </button>
+
+          <span className="text-[var(--border-strong)] select-none">·</span>
+
           <button
             onClick={() => setConfirmDisconnect(true)}
             className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors"
@@ -171,17 +215,13 @@ function CanvasSection() {
             <Link2Off size={14} />
             Disconnect Canvas
           </button>
-        ) : (
+        </div>
+
+        {confirmDisconnect && (
           <div className="surface-border rounded-xl p-4 space-y-3">
             <p className="text-sm text-[var(--text)]">
               This will remove your Canvas token and all synced data. Are you sure?
             </p>
-            {error && (
-              <div className="flex items-center gap-2 text-[var(--danger)] text-xs">
-                <AlertCircle size={13} />
-                {error}
-              </div>
-            )}
             <div className="flex gap-2">
               <button
                 onClick={handleDisconnect}

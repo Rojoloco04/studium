@@ -49,7 +49,7 @@ export default function CoursesPage() {
         : null;
     const now = new Date();
     const upcomingCount = assignments.filter(
-      (a) => !isFinished(a) && a.due_at && new Date(a.due_at) >= now
+      (a) => !isFinished(a) && (!a.due_at || new Date(a.due_at) >= now)
     ).length;
     return { total: courses.length, avgScore, upcomingCount };
   }, [courses, assignments]);
@@ -58,7 +58,7 @@ export default function CoursesPage() {
     const now = new Date();
     const map: Record<string, number> = {};
     for (const a of assignments) {
-      if (!isFinished(a) && a.due_at && new Date(a.due_at) >= now) {
+      if (!isFinished(a) && (!a.due_at || new Date(a.due_at) >= now)) {
         map[a.course_id] = (map[a.course_id] ?? 0) + 1;
       }
     }

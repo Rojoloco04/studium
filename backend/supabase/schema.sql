@@ -131,3 +131,27 @@ create policy "own data" on study_blocks for all using (auth.uid() = user_id);
 create index if not exists assignments_user_due on assignments(user_id, due_at);
 create index if not exists assignments_course on assignments(course_id);
 create index if not exists study_blocks_user on study_blocks(user_id, start_at);
+
+-- ─────────────────────────────────────────
+-- Migration: Assignment groups (grade weights)
+-- Run this after the initial schema if upgrading an existing DB
+-- ─────────────────────────────────────────
+
+create table if not exists assignment_groups (
+  id uuid primary key default gen_random_uuid(),
+  canvas_id bigint not null,
+  course_id uuid references courses(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  group_weight numeric(5,2) default 0,
+  created_at timestamptz default now(),
+  unique(canvas_id, user_id)
+);
+
+alter table assignments add column if not exists assignment_group_id uuid references assignment_groups(id);
+
+alter table assignment_groups enable row level security;
+create policy "own data" on assignment_groups for all using (auth.uid() = user_id);
+
+create index if not exists assignment_groups_course on assignment_groups(course_id);
+create index if not exists assignments_group_id on assignments(assignment_group_id);

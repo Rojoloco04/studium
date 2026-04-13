@@ -23,8 +23,19 @@ class Course(BaseModel):
     name: str
     course_code: str
     term: Optional[str] = None
-    current_grade: Optional[float] = None
+    current_grade: Optional[str] = None
     current_score: Optional[float] = None
+    created_at: datetime
+
+
+# Assignment group (grade category with weight)
+class AssignmentGroup(BaseModel):
+    id: str
+    canvas_id: int
+    course_id: str
+    user_id: str
+    name: str
+    group_weight: float = 0
     created_at: datetime
 
 
@@ -40,6 +51,7 @@ class Assignment(BaseModel):
     submission_types: list[str] = []
     score: Optional[float] = None
     submitted: bool = False
+    assignment_group_id: Optional[str] = None
     created_at: datetime
 
 

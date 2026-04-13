@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/lib/theme';
 import { SessionGuard } from '@/lib/session-guard';
 import { Analytics } from '@vercel/analytics/next';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'Studium',
@@ -46,6 +47,7 @@ export default function RootLayout({
           <SessionGuard />
           {children}
         </ThemeProvider>
+        <Toaster position="bottom-right" richColors />
         <Analytics />
       </body>
     </html>

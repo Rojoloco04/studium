@@ -40,19 +40,25 @@ studium/
 
 - Canvas connect/sync/status/disconnect endpoints (JWT-authenticated)
 - Fernet encryption of Canvas tokens at rest
-- Full course + assignment sync with Canvas pagination
-- All dashboard pages scaffolded (courses, assignments, grades, planner, upload)
-- Settings page (canvas management, theme toggle) — replaces old "Canvas Setup" nav entry
+- Full course + assignment + assignment group sync with Canvas pagination
+- Assignment groups (grade categories with weights) synced per course; sync preserves manually marked submissions
+- Courses page — sortable grid view; each card links to a per-course detail page (`/dashboard/courses/[id]`)
+- Course detail page — assignment list with filter tabs, grade summary bar, score display, "Mark done" toggle with optimistic update
+- Grades page — accordion per-course rows; per-category breakdown (weights + contribution); interactive final grade estimator
+- Settings page — Canvas connect/sync/disconnect with toast notifications (`sonner`); theme toggle
 - Auth flows (login, signup, middleware-based route protection)
 - Light/dark theme via `ThemeProvider` (`lib/theme.tsx`); CSS vars split into `:root` (light) and `[data-theme="dark"]`
 - `SessionGuard` (`lib/session-guard.tsx`) for persistent session handling
-- App favicon via `src/app/icon.png` (Next.js App Router convention)
+- PWA metadata (manifest, icons, Apple Web App, theme color) in `layout.tsx`
+- React Query hooks in `lib/queries.ts`: `useCourses`, `useAssignments`, `useAssignmentGroups`, `useCanvasConnected`, `useToggleSubmitted`
 
 ## Not yet built
 
 - Gemini syllabus parser
 - Google Calendar sync
-- Grade estimator / feedback loop
+- Assignments page (live data)
+- Dashboard overview stat cards (live data)
+- Planner page
 
 ## Dev
 

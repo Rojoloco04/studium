@@ -10,6 +10,14 @@ export type Course = {
   created_at: string;
 };
 
+export type AssignmentGroup = {
+  id: string;
+  canvas_id: number;
+  course_id: string;
+  name: string;
+  group_weight: number;
+};
+
 export type Assignment = {
   id: string;
   name: string;
@@ -19,6 +27,7 @@ export type Assignment = {
   submitted: boolean;
   submission_types: string[];
   course_id: string;
+  assignment_group_id: string | null;
   estimated_hours: number | null;
   actual_hours: number | null;
   courses: Pick<Course, 'name' | 'course_code'> | null;
