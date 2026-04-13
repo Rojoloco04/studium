@@ -84,15 +84,15 @@ export default function CanvasSetupPage() {
         <ol className="space-y-2 text-sm text-[var(--text-dim)]">
           <li className="flex gap-2">
             <span className="font-mono text-[var(--accent)] flex-shrink-0">1.</span>
-            Open Canvas and go to <strong className="text-[var(--text)]">Account → Settings</strong>
+            <span>Open Canvas and go to <strong className="text-[var(--text)]">Account → Settings</strong></span>
           </li>
           <li className="flex gap-2">
             <span className="font-mono text-[var(--accent)] flex-shrink-0">2.</span>
-            Scroll to <strong className="text-[var(--text)]">Approved Integrations</strong> and click <strong className="text-[var(--text)]">+ New Access Token</strong>
+            <span>Scroll to <strong className="text-[var(--text)]">Approved Integrations</strong> and click <strong className="text-[var(--text)]">+ New Access Token</strong></span>
           </li>
           <li className="flex gap-2">
             <span className="font-mono text-[var(--accent)] flex-shrink-0">3.</span>
-            Name it <strong className="text-[var(--text)]">Studium</strong>, set an expiry, and copy the token
+            <span>Name it <strong className="text-[var(--text)]">Studium</strong>, set an expiry, and copy the token</span>
           </li>
         </ol>
         <a
