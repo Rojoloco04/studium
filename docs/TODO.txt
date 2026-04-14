@@ -4,8 +4,20 @@ RMP integration
 course/degree planning 
 chatbot (3.1 flash lite)
 override to remove dead/fake courses
+mark done on dashboard assignments
+phone (PWA) does NOT work... sidebar needs to collapse
+
+study buddy
+- flashcards
+- quiz me
+- note / slide summarizer
 
 using syllabus:
 - grade estimation
 - grade calculation based on scale
 - assignment overview?
+
+job helper?
+- resume review
+- interview practice?
+- job recommendations based on resume
