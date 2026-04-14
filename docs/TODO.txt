@@ -1,8 +1,7 @@
 daily digest with notification
-planner page with gemini / GCAL
 RMP integration
 course/degree planning 
-chatbot (3.1 flash lite)
+chatbot
 account deletion / password reset in settings
 
 study buddy
