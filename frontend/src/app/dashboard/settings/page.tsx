@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -556,7 +556,7 @@ function HiddenCoursesSection() {
 
 // ── Page ─────────────────────────────────────────────────────
 
-export default function SettingsPage() {
+function GCalCallbackHandler() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -567,7 +567,6 @@ export default function SettingsPage() {
       toast.success('Google Calendar connected');
       queryClient.invalidateQueries({ queryKey: ['gcal-status'] });
       queryClient.invalidateQueries({ queryKey: QK.googleCalendarConnected });
-      // Remove the query param without a page reload
       router.replace('/dashboard/settings', { scroll: false });
     } else if (gcal === 'error') {
       toast.error('Failed to connect Google Calendar');
@@ -575,8 +574,15 @@ export default function SettingsPage() {
     }
   }, [searchParams, router, queryClient]);
 
+  return null;
+}
+
+export default function SettingsPage() {
   return (
     <div className="p-6 max-w-lg mx-auto space-y-8">
+      <Suspense>
+        <GCalCallbackHandler />
+      </Suspense>
       <div>
         <h1 className="font-display font-700 text-2xl text-[var(--text)]">Settings</h1>
         <p className="text-[var(--text-dim)] text-sm mt-1">Manage your integrations and preferences.</p>
