@@ -30,6 +30,7 @@ create table if not exists courses (
   term text,
   current_grade text,
   current_score numeric(5,2),
+  hidden boolean default false not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   unique(canvas_id, user_id)
@@ -155,3 +156,9 @@ create policy "own data" on assignment_groups for all using (auth.uid() = user_i
 
 create index if not exists assignment_groups_course on assignment_groups(course_id);
 create index if not exists assignments_group_id on assignments(assignment_group_id);
+
+-- ─────────────────────────────────────────
+-- Migration: Hidden course override
+-- Run this after the initial schema if upgrading an existing DB
+-- ─────────────────────────────────────────
+alter table courses add column if not exists hidden boolean default false not null;

@@ -39,9 +39,10 @@ studium/
 │       │   ├── supabase/
 │       │   │   ├── client.ts         # Browser Supabase client
 │       │   │   └── server.ts         # RSC/server-action client
-│       │   ├── queries.ts            # React Query hooks (courses, assignments, groups, toggle)
+│       │   ├── queries.ts            # React Query hooks (courses, allCourses, assignments, groups, toggleSubmitted, toggleHideCourse)
 │       │   ├── types.ts              # Course, Assignment, AssignmentGroup types
 │       │   ├── theme.tsx             # ThemeProvider (light/dark)
+│       │   └── sync-provider.tsx     # SyncProvider — global Canvas sync state (syncing, triggerSync)
 │       │   └── session-guard.tsx     # Persistent session handling
 │       └── middleware.ts             # Auth route protection
 └── backend/
@@ -78,14 +79,17 @@ studium/
 - **Course detail page** (`/dashboard/courses/[id]`) — assignment list with filter tabs (All / Upcoming / Past Due / Submitted), grade summary bar, score display, submission-type icons, "Mark done" toggle with optimistic update
 - **Grades page** — accordion per-course rows; per-category grade breakdown table (weights + contribution); interactive final grade estimator (what-if: enter final exam weight + running grade → see what you need for each letter)
 - **Assignments page** — filter tabs (all/upcoming/past due/finished), per-course dropdown filter, color-coded due dates, "Mark done" toggle with optimistic update
-- **Dashboard page** — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list (next 5); contextual encouragement message; loading skeletons throughout
-- **Settings page** — Canvas connection management (connect / sync now / disconnect) with toast notifications; light/dark theme toggle
+- **Dashboard page** — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list (next 5) with hover "Mark done"; contextual encouragement message; loading skeletons throughout
+- **Settings page** — Canvas connection management (connect / sync now / disconnect) with toast notifications; light/dark theme toggle; hidden courses manager (unhide hidden courses)
 - **Theme** — light mode default, dark mode via `[data-theme="dark"]`; `ThemeProvider` persists to `localStorage`
 - **PWA metadata** — web manifest, icons, Apple Web App capable, theme color in `layout.tsx`
 - **Toast notifications** — `sonner` library; triggered on sync success/failure
+- **Course hiding** — hide courses from all views via hover button on course cards or course detail page; manage via Settings; `hidden boolean` column on `courses` table
+- **Mobile layout** — responsive: fixed top header + slide-in drawer on mobile; desktop sidebar unchanged; `SyncProvider` exposes global `syncing` state and `triggerSync()` consumed by the layout spinner and Settings sync button
+- **Nav order** — Dashboard → Courses → Assignments → Grades → Planner → Upload Syllabus
 
 ### Database
-Tables: `canvas_tokens`, `courses`, `assignments`, `assignment_groups`, `syllabi`, `study_blocks`
+Tables: `canvas_tokens`, `courses` (incl. `hidden boolean`), `assignments`, `assignment_groups`, `syllabi`, `study_blocks`
 - RLS enabled on all tables (users see only their own rows)
 - `updated_at` triggers on mutable tables
 - Indexes on `assignments(user_id, due_at)`, `assignments(course_id)`, `assignments(assignment_group_id)`, `assignment_groups(course_id)`, and `study_blocks(user_id, start_at)`

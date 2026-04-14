@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useCourses, useAssignments, useCanvasConnected } from '@/lib/queries';
+import { useCourses, useAssignments, useCanvasConnected, useToggleHideCourse } from '@/lib/queries';
 import type { Assignment, Course } from '@/lib/types';
-import { BookOpen, ArrowRight, ArrowUpDown } from 'lucide-react';
+import { BookOpen, ArrowRight, ArrowUpDown, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import clsx from 'clsx';
 
@@ -36,6 +37,7 @@ export default function CoursesPage() {
   const { data: assignments = [], isLoading: loadingAssignments } = useAssignments();
 
   const [sort, setSort] = useState<SortKey>('name');
+  const hideCourse = useToggleHideCourse();
 
   const loading = checkingCanvas || loadingCourses || loadingAssignments;
 
@@ -181,6 +183,10 @@ export default function CoursesPage() {
               key={course.id}
               course={course}
               upcomingCount={upcomingByCourse[course.id] ?? 0}
+              onHide={() => {
+                hideCourse.mutate({ id: course.id, hidden: true });
+                toast.success('Course hidden', { description: 'Manage hidden courses in Settings.' });
+              }}
             />
           ))}
         </div>
@@ -201,11 +207,14 @@ function StatChip({ label, value }: { label: string; value: string }) {
 function CourseCard({
   course,
   upcomingCount,
+  onHide,
 }: {
   course: Course;
   upcomingCount: number;
+  onHide: () => void;
 }) {
   return (
+    <div className="relative group/card">
     <Link
       href={`/dashboard/courses/${course.id}`}
       className="surface-border rounded-xl p-5 block hover:border-[var(--border-strong)] transition-all duration-150 group"
@@ -269,5 +278,13 @@ function CourseCard({
           : 'All caught up'}
       </p>
     </Link>
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onHide(); }}
+      title="Hide course"
+      className="absolute top-2.5 right-2.5 p-1.5 rounded-lg opacity-0 group-hover/card:opacity-100 text-[var(--text-faint)] hover:text-[var(--text)] hover:bg-[var(--surface-2)] transition-all"
+    >
+      <EyeOff size={13} />
+    </button>
+    </div>
   );
 }

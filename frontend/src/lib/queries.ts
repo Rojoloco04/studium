@@ -6,6 +6,7 @@ import type { Assignment, AssignmentGroup, Course } from '@/lib/types';
 export const QK = {
   canvasConnected: ['canvas', 'connected'] as const,
   courses: ['courses'] as const,
+  allCourses: ['courses', 'all'] as const,
   assignments: ['assignments'] as const,
   assignmentGroups: ['assignment_groups'] as const,
 };
@@ -47,11 +48,32 @@ export function useCourses() {
         .from('courses')
         .select('*')
         .eq('user_id', user.id)
+        .eq('hidden', false)
         .order('name');
       if (error) throw error;
       return (data as Course[]) ?? [];
     },
     staleTime: 1000 * 60 * 5, // 5 min — data only changes after a Canvas sync
+  });
+}
+
+// All courses including hidden ones — used only for the settings hidden-courses manager.
+export function useAllCourses() {
+  return useQuery({
+    queryKey: QK.allCourses,
+    queryFn: async () => {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [] as Course[];
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
+      if (error) throw error;
+      return (data as Course[]) ?? [];
+    },
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -67,12 +89,13 @@ export function useAssignments() {
       const { data, error } = await supabase
         .from('assignments')
         .select(
-          'id, name, due_at, points_possible, score, submitted, submission_types, course_id, assignment_group_id, estimated_hours, actual_hours, courses(name, course_code)'
+          'id, name, due_at, points_possible, score, submitted, submission_types, course_id, assignment_group_id, estimated_hours, actual_hours, courses(name, course_code, hidden)'
         )
         .eq('user_id', user.id)
         .order('due_at', { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data as unknown as Assignment[]) ?? [];
+      const all = (data as unknown as Assignment[]) ?? [];
+      return all.filter((a) => !a.courses?.hidden);
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -126,6 +149,44 @@ export function useToggleSubmitted() {
       if (context?.previous) {
         queryClient.setQueryData(QK.assignments, context.previous);
       }
+    },
+  });
+}
+
+// ─── Toggle course hidden ────────────────────────────────────────────────────
+
+export function useToggleHideCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, hidden }: { id: string; hidden: boolean }) => {
+      const supabase = getSupabase();
+      const { error } = await supabase
+        .from('courses')
+        .update({ hidden })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, hidden }) => {
+      await queryClient.cancelQueries({ queryKey: QK.courses });
+      const previous = queryClient.getQueryData<Course[]>(QK.courses);
+      if (hidden) {
+        // Optimistically remove from the visible courses list
+        queryClient.setQueryData<Course[]>(QK.courses, (old = []) =>
+          old.filter((c) => c.id !== id)
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(QK.courses, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QK.courses });
+      queryClient.invalidateQueries({ queryKey: QK.allCourses });
+      queryClient.invalidateQueries({ queryKey: QK.assignments });
     },
   });
 }

@@ -25,6 +25,7 @@ class Course(BaseModel):
     term: Optional[str] = None
     current_grade: Optional[str] = None
     current_score: Optional[float] = None
+    hidden: bool = False
     created_at: datetime
 
 

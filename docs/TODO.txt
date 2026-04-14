@@ -3,9 +3,6 @@ planner page with gemini / GCAL
 RMP integration
 course/degree planning 
 chatbot (3.1 flash lite)
-override to remove dead/fake courses
-mark done on dashboard assignments
-phone (PWA) does NOT work... sidebar needs to collapse
 
 study buddy
 - flashcards

@@ -50,9 +50,12 @@ studium/
 - Light/dark theme via `ThemeProvider` (`lib/theme.tsx`); CSS vars split into `:root` (light) and `[data-theme="dark"]`
 - `SessionGuard` (`lib/session-guard.tsx`) for persistent session handling
 - PWA metadata (manifest, icons, Apple Web App, theme color) in `layout.tsx`
-- React Query hooks in `lib/queries.ts`: `useCourses`, `useAssignments`, `useAssignmentGroups`, `useCanvasConnected`, `useToggleSubmitted`
+- React Query hooks in `lib/queries.ts`: `useCourses`, `useAllCourses`, `useAssignments`, `useAssignmentGroups`, `useCanvasConnected`, `useToggleSubmitted`, `useToggleHideCourse`
 - Assignments page — filter tabs (all/upcoming/past due/finished), per-course dropdown filter, "Mark done" toggle with optimistic update, color-coded due dates
-- Dashboard page — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list; contextual encouragement message; loading skeletons throughout
+- Dashboard page — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list with hover "Mark done"; contextual encouragement message; loading skeletons throughout
+- Course hiding — `hidden boolean` column on `courses` table; hide button on course cards (hover) and course detail page; hidden courses manager in Settings to unhide; hidden courses filtered from all views and assignment lists
+- Mobile-responsive layout — fixed top header + slide-in drawer on mobile; desktop sidebar unchanged; `SyncProvider` (`lib/sync-provider.tsx`) provides global sync state (`syncing`, `triggerSync`) consumed by layout spinner and Settings sync button
+- Nav order: Dashboard → Courses → Assignments → Grades → Planner → Upload Syllabus
 
 ## Not yet built
 

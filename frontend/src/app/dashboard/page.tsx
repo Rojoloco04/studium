@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useCanvasConnected, useCourses, useAssignments } from '@/lib/queries';
+import { useCanvasConnected, useCourses, useAssignments, useToggleSubmitted } from '@/lib/queries';
 import type { Assignment, Course } from '@/lib/types';
 import {
   BookOpen,
@@ -205,6 +205,7 @@ export default function DashboardPage() {
   const { data: canvasConnected, isLoading: checkingCanvas } = useCanvasConnected();
   const { data: courses = [], isLoading: loadingCourses } = useCourses();
   const { data: assignments = [], isLoading: loadingAssignments } = useAssignments();
+  const toggleSubmitted = useToggleSubmitted();
 
   const loading = checkingCanvas || loadingCourses || loadingAssignments;
 
@@ -443,7 +444,7 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={a.id}
-                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--surface-2)] transition-colors"
+                    className="group flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--surface-2)] transition-colors"
                   >
                     <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                       {past ? (
@@ -463,11 +464,19 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <span
-                      className="text-xs font-mono flex-shrink-0"
+                      className="text-xs font-mono flex-shrink-0 group-hover:hidden"
                       style={{ color: dueColor }}
                     >
                       {dueText}
                     </span>
+                    <button
+                      onClick={() =>
+                        toggleSubmitted.mutate({ id: a.id, submitted: true })
+                      }
+                      className="hidden group-hover:inline text-xs font-medium text-[var(--text-faint)] hover:text-[var(--accent)] transition-colors flex-shrink-0"
+                    >
+                      Mark done
+                    </button>
                   </div>
                 );
               })}

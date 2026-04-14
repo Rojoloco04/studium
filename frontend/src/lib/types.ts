@@ -7,6 +7,7 @@ export type Course = {
   term: string | null;
   current_grade: string | null;
   current_score: number | null;
+  hidden: boolean;
   created_at: string;
 };
 
@@ -30,5 +31,5 @@ export type Assignment = {
   assignment_group_id: string | null;
   estimated_hours: number | null;
   actual_hours: number | null;
-  courses: Pick<Course, 'name' | 'course_code'> | null;
+  courses: Pick<Course, 'name' | 'course_code' | 'hidden'> | null;
 };

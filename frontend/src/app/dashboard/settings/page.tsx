@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/lib/theme';
+import { useAllCourses, useToggleHideCourse } from '@/lib/queries';
+import { useSyncCanvas } from '@/lib/sync-provider';
 import {
   GraduationCap,
   ExternalLink,
@@ -15,6 +17,8 @@ import {
   Sun,
   Shield,
   RefreshCw,
+  EyeOff,
+  Eye,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────
@@ -50,8 +54,8 @@ function CanvasSection() {
   const [token, setToken] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const { syncing, triggerSync } = useSyncCanvas();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -94,26 +98,8 @@ function CanvasSection() {
   }
 
   async function handleSync() {
-    setSyncing(true);
     setError('');
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API}/api/canvas/sync`, { method: 'POST', headers });
-      if (!res.ok) throw new Error('Sync failed');
-      // Await status refetch so "last synced" updates immediately in the card.
-      await queryClient.refetchQueries({ queryKey: ['canvas-status'] });
-      // Invalidate the rest in the background — other pages pick up fresh data.
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['assignment_groups'] });
-      toast.success('Canvas synced');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Sync failed';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setSyncing(false);
-    }
+    await triggerSync();
   }
 
   async function handleDisconnect() {
@@ -357,6 +343,58 @@ function AppearanceSection() {
   );
 }
 
+// ── Hidden courses ───────────────────────────────────────────
+
+function HiddenCoursesSection() {
+  const { data: allCourses = [], isLoading } = useAllCourses();
+  const toggleHide = useToggleHideCourse();
+
+  const hidden = allCourses.filter((c) => c.hidden);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-[var(--text-faint)] text-sm py-2">
+        <Loader2 size={14} className="animate-spin" />
+        Loading…
+      </div>
+    );
+  }
+
+  if (hidden.length === 0) {
+    return (
+      <p className="text-sm text-[var(--text-faint)]">No hidden courses.</p>
+    );
+  }
+
+  return (
+    <div className="surface-border rounded-xl overflow-hidden">
+      <div className="divide-y divide-[var(--border)]">
+        {hidden.map((course) => (
+          <div key={course.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-[var(--text)] truncate">{course.name}</p>
+              <p className="text-xs font-mono text-[var(--text-faint)]">{course.course_code}</p>
+            </div>
+            <button
+              onClick={() => {
+                toggleHide.mutate(
+                  { id: course.id, hidden: false },
+                  { onSuccess: () => toast.success('Course unhidden') }
+                );
+              }}
+              disabled={toggleHide.isPending}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+            >
+              <Eye size={13} />
+              Unhide
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -385,6 +423,20 @@ export default function SettingsPage() {
           <h2 className="font-display font-600 text-base text-[var(--text)]">Appearance</h2>
         </div>
         <AppearanceSection />
+      </section>
+
+      <div className="border-t border-[var(--border)]" />
+
+      {/* Hidden courses */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <EyeOff size={15} className="text-[var(--text-dim)]" />
+          <h2 className="font-display font-600 text-base text-[var(--text)]">Hidden Courses</h2>
+        </div>
+        <p className="text-xs text-[var(--text-dim)]">
+          These courses are hidden from all views. Unhide to restore them.
+        </p>
+        <HiddenCoursesSection />
       </section>
     </div>
   );

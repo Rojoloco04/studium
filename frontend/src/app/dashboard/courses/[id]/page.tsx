@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useCourses, useAssignments, useToggleSubmitted } from '@/lib/queries';
+import { useParams, useRouter } from 'next/navigation';
+import { useCourses, useAssignments, useToggleSubmitted, useToggleHideCourse } from '@/lib/queries';
+import { toast } from 'sonner';
 import type { Assignment } from '@/lib/types';
 import {
   ChevronLeft,
@@ -15,6 +16,8 @@ import {
   FileText,
   Paperclip,
   ClipboardList,
+  EyeOff,
+  Eye,
 } from 'lucide-react';
 import Link from 'next/link';
 import clsx from 'clsx';
@@ -78,9 +81,11 @@ function submissionIcon(types: string[]) {
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: courses = [], isLoading: loadingCourses } = useCourses();
   const { data: allAssignments = [], isLoading: loadingAssignments } = useAssignments();
   const toggleSubmitted = useToggleSubmitted();
+  const toggleHide = useToggleHideCourse();
 
   const [filter, setFilter] = useState<DetailFilter>('upcoming');
 
@@ -176,6 +181,27 @@ export default function CourseDetailPage() {
                     </span>
                   )}
                 </div>
+                <button
+                  onClick={() => {
+                    toggleHide.mutate(
+                      { id: course.id, hidden: !course.hidden },
+                      {
+                        onSuccess: () => {
+                          if (!course.hidden) {
+                            toast.success('Course hidden', { description: 'Manage hidden courses in Settings.' });
+                            router.push('/dashboard/courses');
+                          } else {
+                            toast.success('Course unhidden');
+                          }
+                        },
+                      }
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 mt-3 text-xs text-[var(--text-faint)] hover:text-[var(--text-dim)] transition-colors"
+                >
+                  {course.hidden ? <Eye size={12} /> : <EyeOff size={12} />}
+                  {course.hidden ? 'Unhide course' : 'Hide course'}
+                </button>
               </div>
               <div className="text-right flex-shrink-0">
                 <div
