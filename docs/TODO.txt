@@ -1,7 +1,5 @@
 daily digest with notification
-implement all pages
-- dashboard (needs to not always say good morning)
-- etc.
+planner page with gemini / GCAL
 RMP integration
 course/degree planning 
 chatbot (3.1 flash lite)

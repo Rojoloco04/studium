@@ -51,14 +51,15 @@ studium/
 - `SessionGuard` (`lib/session-guard.tsx`) for persistent session handling
 - PWA metadata (manifest, icons, Apple Web App, theme color) in `layout.tsx`
 - React Query hooks in `lib/queries.ts`: `useCourses`, `useAssignments`, `useAssignmentGroups`, `useCanvasConnected`, `useToggleSubmitted`
+- Assignments page — filter tabs (all/upcoming/past due/finished), per-course dropdown filter, "Mark done" toggle with optimistic update, color-coded due dates
+- Dashboard page — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list; contextual encouragement message; loading skeletons throughout
 
 ## Not yet built
 
 - Gemini syllabus parser
 - Google Calendar sync
-- Assignments page (live data)
-- Dashboard overview stat cards (live data)
 - Planner page
+- Daily digest / AI-generated summary
 
 ## Dev
 

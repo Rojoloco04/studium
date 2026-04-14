@@ -381,7 +381,7 @@ function FinalEstimator({ course, groups }: { course: Course; groups: Assignment
           <span className="text-xs text-[var(--text-dim)]">
             Final exam weight (%)
             {finalGroup && (
-              <span className="ml-1 text-[var(--text-faint)]">— from "{finalGroup.name}"</span>
+              <span className="ml-1 text-[var(--text-faint)]">— from &ldquo;{finalGroup.name}&rdquo;</span>
             )}
           </span>
           <input

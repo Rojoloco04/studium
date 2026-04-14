@@ -77,6 +77,8 @@ studium/
 - **Courses page** — sortable grid (by name or grade), stat chips, color-coded grade badges, progress bars, upcoming assignment counts; each card links to a per-course detail page
 - **Course detail page** (`/dashboard/courses/[id]`) — assignment list with filter tabs (All / Upcoming / Past Due / Submitted), grade summary bar, score display, submission-type icons, "Mark done" toggle with optimistic update
 - **Grades page** — accordion per-course rows; per-category grade breakdown table (weights + contribution); interactive final grade estimator (what-if: enter final exam weight + running grade → see what you need for each letter)
+- **Assignments page** — filter tabs (all/upcoming/past due/finished), per-course dropdown filter, color-coded due dates, "Mark done" toggle with optimistic update
+- **Dashboard page** — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list (next 5); contextual encouragement message; loading skeletons throughout
 - **Settings page** — Canvas connection management (connect / sync now / disconnect) with toast notifications; light/dark theme toggle
 - **Theme** — light mode default, dark mode via `[data-theme="dark"]`; `ThemeProvider` persists to `localStorage`
 - **PWA metadata** — web manifest, icons, Apple Web App capable, theme color in `layout.tsx`
@@ -92,9 +94,8 @@ Tables: `canvas_tokens`, `courses`, `assignments`, `assignment_groups`, `syllabi
 
 - Gemini syllabus parser (service + `/api/syllabus` routes)
 - Google Calendar sync
-- Assignments page (live data)
-- Dashboard overview stat cards (live data)
 - Planner page
+- Daily digest / AI-generated summary
 
 ## Setup
 
