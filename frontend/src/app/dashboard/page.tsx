@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useCanvasConnected, useCourses, useAssignments } from '@/lib/queries';
-import type { Assignment } from '@/lib/types';
+import type { Assignment, Course } from '@/lib/types';
 import {
   BookOpen,
   ClipboardList,
@@ -71,15 +71,17 @@ function StatCard({
   sub,
   icon: Icon,
   accent = false,
+  href,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   icon: React.ElementType;
   accent?: boolean;
+  href?: string;
 }) {
-  return (
-    <div className="surface-border rounded-xl p-5">
+  const inner = (
+    <>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-mono text-[var(--text-faint)] uppercase tracking-wider">
           {label}
@@ -97,7 +99,91 @@ function StatCard({
       </div>
       <div className="font-display font-700 text-2xl text-[var(--text)]">{value}</div>
       {sub && <div className="text-xs text-[var(--text-faint)] mt-0.5">{sub}</div>}
-    </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="surface-border rounded-xl p-5 block hover:border-[var(--accent)] transition-colors" style={{ textDecoration: 'none' }}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return <div className="surface-border rounded-xl p-5">{inner}</div>;
+}
+
+// ─── AtRiskCard ──────────────────────────────────────────────────────────────
+
+function AtRiskCard({
+  value,
+  sub,
+  lowScoreCourseList,
+  pastDueUnsubmitted,
+}: {
+  value: string | number;
+  sub?: string;
+  lowScoreCourseList: Course[];
+  pastDueUnsubmitted: number;
+}) {
+  const hasDetail = typeof value === 'number' && value > 0;
+
+  return (
+    <Link
+      href="/dashboard/grades"
+      className="group relative surface-border rounded-xl p-5 block transition-colors hover:border-[var(--danger)]"
+      style={{ textDecoration: 'none' }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-mono text-[var(--text-faint)] uppercase tracking-wider">
+          At risk
+        </span>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[var(--surface-2)]">
+          <AlertCircle
+            size={14}
+            className={
+              hasDetail ? 'text-[var(--danger)]' : 'text-[var(--text-dim)]'
+            }
+          />
+        </div>
+      </div>
+      <div className="font-display font-700 text-2xl text-[var(--text)]">{value}</div>
+      {sub && <div className="text-xs text-[var(--text-faint)] mt-0.5">{sub}</div>}
+
+      {/* Tooltip */}
+      {hasDetail && (
+        <div className="pointer-events-none absolute z-20 bottom-full left-0 mb-2 w-56 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="surface-border rounded-xl p-3 shadow-lg bg-[var(--surface)] text-xs space-y-2">
+            {pastDueUnsubmitted > 0 && (
+              <div>
+                <p className="font-medium text-[var(--danger)] mb-0.5">
+                  {pastDueUnsubmitted} past due
+                </p>
+                <p className="text-[var(--text-faint)]">unsubmitted assignments</p>
+              </div>
+            )}
+            {lowScoreCourseList.length > 0 && (
+              <div>
+                <p className="font-medium text-[var(--warning)] mb-1">Low grades</p>
+                <ul className="space-y-0.5">
+                  {lowScoreCourseList.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between gap-2">
+                      <span className="text-[var(--text-dim)] truncate">{c.name}</span>
+                      <span className="font-mono text-[var(--danger)] flex-shrink-0">
+                        {c.current_score}%
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="text-[var(--text-faint)] border-t border-[var(--border)] pt-2">
+              View grades →
+            </p>
+          </div>
+        </div>
+      )}
+    </Link>
   );
 }
 
@@ -150,9 +236,10 @@ export default function DashboardPage() {
       (a) => !isFinished(a) && !!a.due_at && new Date(a.due_at) < now
     ).length;
 
-    const lowScoreCourses = courses.filter(
+    const lowScoreCourseList = courses.filter(
       (c) => c.current_score != null && c.current_score < 70
-    ).length;
+    );
+    const lowScoreCourses = lowScoreCourseList.length;
 
     return {
       courseCount,
@@ -161,6 +248,7 @@ export default function DashboardPage() {
       atRisk: pastDueUnsubmitted + lowScoreCourses,
       pastDueUnsubmitted,
       lowScoreCourses,
+      lowScoreCourseList,
     };
   }, [courses, assignments]);
 
@@ -187,7 +275,7 @@ export default function DashboardPage() {
       };
     if (atRisk > 0)
       return {
-        text: `${atRisk} item${atRisk > 1 ? 's' : ''} need attention — you've got this.`,
+        text: `${atRisk} item${atRisk > 1 ? 's' : ''} need${atRisk > 1 ? '' : 's'} attention — you've got this.`,
         color: 'var(--warning)',
       };
     if (avgGrade != null && avgGrade >= 90)
@@ -290,12 +378,14 @@ export default function DashboardPage() {
             value={canvasConnected ? stats.courseCount : '—'}
             icon={BookOpen}
             accent
+            href={canvasConnected ? '/dashboard/courses' : undefined}
           />
           <StatCard
             label="Due this week"
             value={canvasConnected ? stats.dueThisWeek : '—'}
             sub="assignments"
             icon={ClipboardList}
+            href={canvasConnected ? '/dashboard/assignments' : undefined}
           />
           <StatCard
             label="Avg grade"
@@ -307,13 +397,18 @@ export default function DashboardPage() {
                 : '—'
             }
             icon={TrendingUp}
+            href={canvasConnected ? '/dashboard/grades' : undefined}
           />
-          <StatCard
-            label="At risk"
-            value={canvasConnected ? stats.atRisk : '—'}
-            sub={canvasConnected ? atRiskSub : undefined}
-            icon={AlertCircle}
-          />
+          {canvasConnected ? (
+            <AtRiskCard
+              value={stats.atRisk}
+              sub={atRiskSub}
+              lowScoreCourseList={stats.lowScoreCourseList}
+              pastDueUnsubmitted={stats.pastDueUnsubmitted}
+            />
+          ) : (
+            <StatCard label="At risk" value="—" icon={AlertCircle} />
+          )}
         </div>
       )}
 
