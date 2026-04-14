@@ -3,6 +3,7 @@ planner page with gemini / GCAL
 RMP integration
 course/degree planning 
 chatbot (3.1 flash lite)
+account deletion / password reset in settings
 
 study buddy
 - flashcards

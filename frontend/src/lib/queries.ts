@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import type { Assignment, AssignmentGroup, Course } from '@/lib/types';
+import type { Assignment, AssignmentGroup, Course, StudyBlock, ProposedBlock, PlanningPrefs } from '@/lib/types';
 
 // Query keys — centralised so every page uses the same cache bucket.
 export const QK = {
@@ -9,6 +9,8 @@ export const QK = {
   allCourses: ['courses', 'all'] as const,
   assignments: ['assignments'] as const,
   assignmentGroups: ['assignment_groups'] as const,
+  googleCalendarConnected: ['google-calendar', 'connected'] as const,
+  studyBlocks: ['study_blocks'] as const,
 };
 
 function getSupabase() {
@@ -149,6 +151,136 @@ export function useToggleSubmitted() {
       if (context?.previous) {
         queryClient.setQueryData(QK.assignments, context.previous);
       }
+    },
+  });
+}
+
+// ─── Google Calendar connection status ───────────────────────────────────────
+
+export function useGoogleCalendarConnected() {
+  return useQuery({
+    queryKey: QK.googleCalendarConnected,
+    queryFn: async () => {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { data } = await supabase
+        .from('google_tokens')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return !!data;
+    },
+    staleTime: Infinity,
+  });
+}
+
+// ─── Study blocks ─────────────────────────────────────────────────────────────
+
+export function useStudyBlocks() {
+  return useQuery({
+    queryKey: QK.studyBlocks,
+    queryFn: async () => {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [] as StudyBlock[];
+      const { data, error } = await supabase
+        .from('study_blocks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('start_at', { ascending: true });
+      if (error) throw error;
+      return (data as StudyBlock[]) ?? [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// ─── Preview study plan (Gemini, no side effects) ────────────────────────────
+
+const API = process.env.NEXT_PUBLIC_API_URL;
+
+async function getAuthHeaders() {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.access_token}`,
+  };
+}
+
+export function usePreviewStudyPlan() {
+  return useMutation({
+    mutationFn: async (prefs: PlanningPrefs): Promise<ProposedBlock[]> => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API}/api/google-calendar/preview-plan`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ prefs }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `Error ${res.status}`);
+      }
+      const data = await res.json();
+      return data.blocks as ProposedBlock[];
+    },
+  });
+}
+
+// ─── Confirm study plan (push to GCal + store in DB) ─────────────────────────
+
+export function useConfirmStudyPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (blocks: ProposedBlock[]) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API}/api/google-calendar/confirm-plan`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ blocks }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `Error ${res.status}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.studyBlocks });
+    },
+  });
+}
+
+// ─── Delete study block ───────────────────────────────────────────────────────
+
+export function useDeleteStudyBlock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (blockId: string) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API}/api/google-calendar/study-blocks/${blockId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+    },
+    onMutate: async (blockId) => {
+      await queryClient.cancelQueries({ queryKey: QK.studyBlocks });
+      const previous = queryClient.getQueryData<StudyBlock[]>(QK.studyBlocks);
+      queryClient.setQueryData<StudyBlock[]>(QK.studyBlocks, (old = []) =>
+        old.filter((b) => b.id !== blockId)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(QK.studyBlocks, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QK.studyBlocks });
     },
   });
 }

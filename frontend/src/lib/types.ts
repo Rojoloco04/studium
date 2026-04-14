@@ -33,3 +33,33 @@ export type Assignment = {
   actual_hours: number | null;
   courses: Pick<Course, 'name' | 'course_code' | 'hidden'> | null;
 };
+
+export type StudyBlock = {
+  id: string;
+  assignment_id: string | null;
+  course_id: string | null;
+  gcal_event_id: string | null;
+  title: string;
+  description: string | null;
+  start_at: string;
+  end_at: string;
+  duration_minutes: number;
+  status: string;
+};
+
+export type ProposedBlock = {
+  assignment_id: string | null;
+  course_id: string | null;
+  title: string;
+  description: string | null;
+  start_at: string;
+  end_at: string;
+  duration_minutes: number;
+};
+
+export type PlanningPrefs = {
+  days_ahead: number;
+  day_start_hour: number;
+  day_end_hour: number;
+  max_session_minutes: number;
+};

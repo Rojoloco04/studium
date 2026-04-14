@@ -162,3 +162,29 @@ create index if not exists assignments_group_id on assignments(assignment_group_
 -- Run this after the initial schema if upgrading an existing DB
 -- ─────────────────────────────────────────
 alter table courses add column if not exists hidden boolean default false not null;
+
+-- ─────────────────────────────────────────
+-- Migration: Google Calendar integration
+-- Run this after the initial schema if upgrading an existing DB
+-- ─────────────────────────────────────────
+
+create table if not exists google_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  encrypted_access_token text not null,
+  encrypted_refresh_token text not null,
+  token_expiry timestamptz,
+  google_email text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id)
+);
+
+create trigger google_tokens_updated_at before update on google_tokens
+  for each row execute function update_updated_at();
+
+alter table google_tokens enable row level security;
+create policy "own data" on google_tokens for all using (auth.uid() = user_id);
+
+-- Add description to study_blocks for Gemini-generated notes
+alter table study_blocks add column if not exists description text;

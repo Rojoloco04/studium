@@ -71,7 +71,7 @@ studium/
 - **Assignment groups** — syncs grade categories with weights per course; links assignments to their group
 - **Submitted-mark preservation** — sync never flips a manually marked assignment back to unsubmitted
 - **Auth** — Supabase JWT verification on every protected route (`Authorization: Bearer <token>`)
-- **Config** — all secrets via `.env`, including `GEMINI_MODEL` (default: `gemini-3.1-flash-lite`)
+- **Config** — all secrets via `.env`, including `GEMINI_MODEL` (default: `gemini-2.0-flash-lite`)
 
 ### Frontend
 - **Auth flows** — login, signup, route protection via middleware; `SessionGuard` for persistence

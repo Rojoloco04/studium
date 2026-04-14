@@ -10,7 +10,7 @@ AI-powered course tracker and study planner.
 | Backend | FastAPI + Python 3.12 |
 | Database | Supabase (Postgres) |
 | Auth | Supabase Auth (email + Google OAuth) |
-| AI | Gemini 3.1 Flash Lite |
+| AI | Gemini 2.0 Flash Lite |
 | Frontend deploy | Vercel |
 | Backend deploy | Railway |
 
@@ -88,6 +88,6 @@ npm run dev                 # http://localhost:3000
 - Frontend fetches must include the Supabase session access token as the Bearer token
 - Supabase client helpers: `frontend/src/lib/supabase/client.ts` (browser) and `server.ts` (RSC/server actions)
 - Canvas access tokens are Fernet-encrypted at rest (`app/core/encryption.py`)
-- Gemini model name lives in config: `settings.gemini_model` (default `gemini-3.1-flash-lite`)
+- Gemini model name lives in config: `settings.gemini_model` (default `gemini-2.0-flash-lite`)
 - Theme is controlled by `data-theme` attribute on `<html>`; `ThemeProvider` reads/writes `localStorage`
 - Environment: backend uses `.env`, frontend uses `.env.local`
