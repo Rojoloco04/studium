@@ -97,50 +97,6 @@ Tables: `canvas_tokens`, `courses`, `assignments`, `assignment_groups`, `syllabi
 - Planner page
 - Daily digest / AI-generated summary
 
-## Setup
-
-### 1. Supabase
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run `backend/supabase/schema.sql` in the SQL editor
-3. Enable Google OAuth under Authentication → Providers
-4. Add your site URL and redirect URLs under Authentication → URL Configuration
-
-### 2. Backend
-
-```bash
-cd backend
-python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# Fill in .env:
-#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-#   GEMINI_API_KEY
-#   CANVAS_TOKEN_ENCRYPTION_KEY  (see below)
-#   FRONTEND_URL
-
-# Generate Fernet key:
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-
-uvicorn main:app --reload   # http://localhost:8000, docs at /docs
-```
-
-### 3. Frontend
-
-```bash
-cd frontend
-npm install
-cp .env.local.example .env.local
-# Fill in: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_API_URL
-npm run dev   # http://localhost:3000
-```
-
-### 4. Connect Canvas
-
-1. Log into Canvas → Account → Settings → Approved Integrations → + New Access Token
-2. Name it "Studium", copy the token
-3. In the app: Dashboard → Settings → enter your domain + token
-
 ## API Endpoints
 
 | Method | Path | Auth | Description |
@@ -151,16 +107,3 @@ npm run dev   # http://localhost:3000
 | GET | `/api/canvas/status` | JWT | Connection status, domain, username + counts |
 | DELETE | `/api/canvas/disconnect` | JWT | Remove stored Canvas token |
 
-## Deployment
-
-### Backend → Railway
-
-1. Push repo to GitHub, create Railway project → Deploy from GitHub
-2. Set env vars in Railway dashboard (same as `.env`)
-3. Railway auto-detects and builds
-
-### Frontend → Vercel
-
-1. Import repo, set root to `frontend/`
-2. Set env vars: Supabase URL, anon key, Railway backend URL
-3. Deploy
