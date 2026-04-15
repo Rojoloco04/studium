@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { SyncProvider, useSyncCanvas } from '@/lib/sync-provider';
+import { PlannerProvider, usePlanner } from '@/lib/planner-provider';
 
 const nav = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -58,6 +59,7 @@ function MobileHeader({ onOpen }: { onOpen: () => void }) {
 
 function MobileDrawer({ onClose, onSignOut }: { onClose: () => void; onSignOut: () => void }) {
   const pathname = usePathname();
+  const { generating } = usePlanner();
 
   return (
     <div className="fixed inset-0 z-50 md:hidden">
@@ -82,6 +84,7 @@ function MobileDrawer({ onClose, onSignOut }: { onClose: () => void; onSignOut: 
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
           {nav.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
+            const isPlannerGenerating = href === '/dashboard/planner' && generating;
             return (
               <Link
                 key={href}
@@ -96,6 +99,9 @@ function MobileDrawer({ onClose, onSignOut }: { onClose: () => void; onSignOut: 
               >
                 <Icon size={15} />
                 {label}
+                {isPlannerGenerating && (
+                  <RefreshCw size={11} className="ml-auto animate-spin text-[var(--accent)] opacity-70" />
+                )}
               </Link>
             );
           })}
@@ -132,6 +138,7 @@ function MobileDrawer({ onClose, onSignOut }: { onClose: () => void; onSignOut: 
 function Sidebar({ onSignOut }: { onSignOut: () => void }) {
   const pathname = usePathname();
   const { syncing } = useSyncCanvas();
+  const { generating } = usePlanner();
 
   return (
     <aside className="hidden md:flex w-56 flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
@@ -151,6 +158,7 @@ function Sidebar({ onSignOut }: { onSignOut: () => void }) {
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {nav.map(({ href, icon: Icon, label }) => {
           const active = pathname === href;
+          const isPlannerGenerating = href === '/dashboard/planner' && generating;
           return (
             <Link
               key={href}
@@ -164,6 +172,9 @@ function Sidebar({ onSignOut }: { onSignOut: () => void }) {
             >
               <Icon size={15} />
               {label}
+              {isPlannerGenerating && (
+                <RefreshCw size={11} className="ml-auto animate-spin text-[var(--accent)] opacity-70" />
+              )}
             </Link>
           );
         })}
@@ -218,6 +229,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <QueryClientProvider client={queryClient}>
       <SyncProvider>
+        <PlannerProvider>
         <div className="flex h-dvh bg-[var(--background)]">
           {/* Mobile top header */}
           <MobileHeader onOpen={() => setDrawerOpen(true)} />
@@ -234,6 +246,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </div>
+        </PlannerProvider>
       </SyncProvider>
     </QueryClientProvider>
   );

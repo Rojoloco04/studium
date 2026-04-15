@@ -62,4 +62,15 @@ export type PlanningPrefs = {
   day_start_hour: number;
   day_end_hour: number;
   max_session_minutes: number;
+  // IANA timezone string detected from the browser (e.g. "America/Chicago").
+  // Must be included so Gemini schedules in the user's local time, not UTC.
+  timezone: string;
+};
+
+export type CalendarEvent = {
+  id?: string;
+  title: string;
+  /** ISO datetime string (timed events) or YYYY-MM-DD (all-day events). */
+  start: string;
+  end: string;
 };

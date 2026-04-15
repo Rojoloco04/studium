@@ -12,6 +12,7 @@ from app.core.supabase import get_supabase
 from app.models.schemas import (
     GCalAuthUrlResponse,
     GCalStatus,
+    CalendarEventOut,
     PreviewPlanRequest,
     PreviewPlanResponse,
     ConfirmPlanRequest,
@@ -193,7 +194,14 @@ async def preview_plan(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini error: {e}")
 
-    return PreviewPlanResponse(blocks=blocks)
+    # Return existing events alongside proposed blocks so the frontend can
+    # render both on the same calendar from a single cached response — no
+    # second round-trip needed.
+    cal_event_out = [
+        CalendarEventOut(id=e.get("id", ""), title=e["title"], start=e["start"], end=e["end"])
+        for e in calendar_events
+    ]
+    return PreviewPlanResponse(blocks=blocks, calendar_events=cal_event_out)
 
 
 # ── Confirm plan (push to GCal + store in DB) ────────────────────────────────
@@ -232,6 +240,30 @@ async def confirm_plan(
             pushed += 1
 
     return ConfirmPlanResponse(pushed=pushed, study_block_ids=block_ids)
+
+
+# ── Calendar events (read-only, for UI display) ───────────────────────────────
+
+@router.get("/events", response_model=list[CalendarEventOut])
+async def list_calendar_events(
+    days: int = 7,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Return upcoming Google Calendar events for the next `days` days.
+    The frontend caches this via TanStack Query and reads locally — no
+    repeated round-trips on re-render.
+    """
+    try:
+        events = get_upcoming_events(user_id, days=min(days, 14))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read calendar: {e}")
+    return [
+        CalendarEventOut(id=e.get("id", ""), title=e["title"], start=e["start"], end=e["end"])
+        for e in events
+    ]
 
 
 # ── Study blocks ──────────────────────────────────────────────────────────────

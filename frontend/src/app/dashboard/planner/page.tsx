@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Calendar,
@@ -11,26 +12,72 @@ import {
   Trash2,
   RefreshCw,
   Clock,
-  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
+  QK,
   useGoogleCalendarConnected,
   useStudyBlocks,
-  usePreviewStudyPlan,
+  useCalendarEvents,
+  usePlannerPreview,
   useConfirmStudyPlan,
   useDeleteStudyBlock,
 } from '@/lib/queries';
-import type { ProposedBlock, StudyBlock, PlanningPrefs } from '@/lib/types';
+import { usePlanner } from '@/lib/planner-provider';
+import type { ProposedBlock, StudyBlock, PlanningPrefs, CalendarEvent } from '@/lib/types';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Prefs persistence ─────────────────────────────────────────────────────────
+// Prefs survive page refresh via localStorage. Timezone is always re-detected
+// from the browser so it stays accurate (don't cache the stored one).
+
+const PREFS_KEY = 'studium_planner_prefs';
+
+function loadPrefs(): PlanningPrefs {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(PREFS_KEY) : null;
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<PlanningPrefs>;
+      return {
+        days_ahead: saved.days_ahead ?? 7,
+        day_start_hour: saved.day_start_hour ?? 8,
+        day_end_hour: saved.day_end_hour ?? 22,
+        max_session_minutes: saved.max_session_minutes ?? 120,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      };
+    }
+  } catch { /* ignore */ }
+  return {
+    days_ahead: 7,
+    day_start_hour: 8,
+    day_end_hour: 22,
+    max_session_minutes: 120,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  };
+}
+
+function savePrefs(p: PlanningPrefs) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(p));
+  } catch { /* ignore */ }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const HOUR_OPTIONS = Array.from({ length: 19 }, (_, i) => i + 5); // 5–23
 
-function formatHour(h: number) {
+function fmtHour(h: number) {
   if (h === 0) return '12 AM';
   if (h < 12) return `${h} AM`;
   if (h === 12) return '12 PM';
   return `${h - 12} PM`;
+}
+
+function fmtHourShort(h: number) {
+  if (h === 0) return '12a';
+  if (h < 12) return `${h}a`;
+  if (h === 12) return '12p';
+  return `${h - 12}p`;
 }
 
 function formatTime(iso: string) {
@@ -38,8 +85,7 @@ function formatTime(iso: string) {
 }
 
 function formatDateLabel(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function groupByDate<T extends { start_at: string }>(blocks: T[]): [string, T[]][] {
@@ -50,6 +96,245 @@ function groupByDate<T extends { start_at: string }>(blocks: T[]): [string, T[]]
     map.get(day)!.push(b);
   }
   return Array.from(map.entries());
+}
+
+function isAllDay(s: string) { return s.length === 10; }
+
+function localMins(iso: string) {
+  const d = new Date(iso);
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+// ── Week Calendar ─────────────────────────────────────────────────────────────
+//
+// Always visible on the planner page:
+//   Idle       → existing Google Calendar events only (gray)
+//   Previewing → + proposed study blocks (dashed accent)
+//   Confirmed  → + confirmed study blocks (solid accent)
+//
+// Shows PAGE_DAYS days at a time with prev/next navigation when days_ahead > 7.
+
+const HOUR_PX = 52;
+const PAGE_DAYS = 7;
+
+interface WeekCalendarProps {
+  daysCount: number;
+  visStartHour: number;
+  visEndHour: number;
+  existingEvents: CalendarEvent[];
+  eventsLoading?: boolean;
+  proposedBlocks?: ProposedBlock[];
+  confirmedBlocks?: StudyBlock[];
+}
+
+function WeekCalendar({
+  daysCount,
+  visStartHour,
+  visEndHour,
+  existingEvents,
+  eventsLoading = false,
+  proposedBlocks = [],
+  confirmedBlocks = [],
+}: WeekCalendarProps) {
+  const [page, setPage] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const totalPages = Math.max(1, Math.ceil(daysCount / PAGE_DAYS));
+  const pageStart = page * PAGE_DAYS;
+  const pageDays = Array.from({ length: Math.min(PAGE_DAYS, daysCount - pageStart) }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + pageStart + i);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  const visHours = visEndHour - visStartHour;
+  const totalHeight = visHours * HOUR_PX;
+  const timeLabels = Array.from({ length: visHours + 1 }, (_, i) => visStartHour + i);
+  const today = new Date().toDateString();
+
+  function dk(d: Date) { return d.toDateString(); }
+  function idk(iso: string) { return new Date(iso).toDateString(); }
+
+  function eventsOn(day: Date) {
+    return existingEvents.filter((e) => !isAllDay(e.start) && idk(e.start) === dk(day));
+  }
+  function proposedOn(day: Date) {
+    return proposedBlocks.filter((b) => idk(b.start_at) === dk(day));
+  }
+  function confirmedOn(day: Date) {
+    return confirmedBlocks.filter((b) => idk(b.start_at) === dk(day));
+  }
+
+  function pos(startIso: string, endIso: string) {
+    const sm = localMins(startIso);
+    const em = localMins(endIso);
+    const offset = Math.max(0, sm - visStartHour * 60);
+    const cappedEnd = Math.min(em, visEndHour * 60);
+    const visible = Math.max(8, cappedEnd - Math.max(sm, visStartHour * 60));
+    return { top: offset * (HOUR_PX / 60), height: visible * (HOUR_PX / 60) };
+  }
+
+  const hasProposed = proposedBlocks.length > 0;
+  const hasConfirmed = confirmedBlocks.length > 0;
+
+  return (
+    <div className="surface-border rounded-xl overflow-hidden text-xs">
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            className="p-1 rounded text-[var(--text-faint)] hover:text-[var(--text)] disabled:opacity-30 transition-colors"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="font-mono text-[var(--text-faint)]">Week {page + 1} of {totalPages}</span>
+          <button
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+            className="p-1 rounded text-[var(--text-faint)] hover:text-[var(--text)] disabled:opacity-30 transition-colors"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Day header */}
+      <div className="flex border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="w-9 flex-shrink-0" />
+        {pageDays.map((day, i) => (
+          <div
+            key={i}
+            className={`flex-1 text-center py-2 font-mono leading-tight ${
+              dk(day) === today ? 'text-[var(--accent)]' : 'text-[var(--text-faint)]'
+            }`}
+          >
+            <div>{day.toLocaleDateString([], { weekday: 'short' })}</div>
+            <div style={{ fontSize: '10px' }}>
+              {day.toLocaleDateString([], { month: 'numeric', day: 'numeric' })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Scrollable time grid */}
+      <div ref={scrollRef} className="flex overflow-y-auto max-h-[360px]">
+        {/* Time labels */}
+        <div className="w-9 flex-shrink-0 relative bg-[var(--surface)]" style={{ height: totalHeight }}>
+          {timeLabels.map((h, i) => (
+            <div
+              key={h}
+              className="absolute w-full text-right pr-1.5 font-mono text-[var(--text-faint)]"
+              style={{ top: i * HOUR_PX - 5, fontSize: '9px' }}
+            >
+              {fmtHourShort(h)}
+            </div>
+          ))}
+        </div>
+
+        {/* Day columns */}
+        {pageDays.map((day, di) => (
+          <div
+            key={di}
+            className="flex-1 relative border-l border-[var(--border)]"
+            style={{ height: totalHeight }}
+          >
+            {timeLabels.map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-full border-t border-[var(--border)]"
+                style={{ top: i * HOUR_PX }}
+              />
+            ))}
+            {dk(day) === today && (
+              <div className="absolute inset-0 bg-[var(--accent)]/[0.03] pointer-events-none" />
+            )}
+
+            {eventsOn(day).map((e, i) => {
+              const p = pos(e.start, e.end);
+              return (
+                <div
+                  key={i}
+                  title={e.title || '(busy)'}
+                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--surface-2)] border border-[var(--border-strong)]"
+                  style={{ top: p.top, height: p.height }}
+                >
+                  {p.height >= 18 && (
+                    <p className="px-1 text-[var(--text-dim)] truncate leading-tight pt-px" style={{ fontSize: '9px' }}>
+                      {e.title || '(busy)'}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+
+            {proposedOn(day).map((b, i) => {
+              const p = pos(b.start_at, b.end_at);
+              return (
+                <div
+                  key={i}
+                  title={b.title}
+                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--accent)]/10 border border-dashed border-[var(--accent)]/70"
+                  style={{ top: p.top, height: p.height }}
+                >
+                  {p.height >= 18 && (
+                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px" style={{ fontSize: '9px' }}>
+                      {b.title}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+
+            {confirmedOn(day).map((b, i) => {
+              const p = pos(b.start_at, b.end_at);
+              return (
+                <div
+                  key={i}
+                  title={b.title}
+                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--accent)]/20 border border-[var(--accent)]"
+                  style={{ top: p.top, height: p.height }}
+                >
+                  {p.height >= 18 && (
+                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px" style={{ fontSize: '9px' }}>
+                      {b.title}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend + loading indicator */}
+      <div className="flex items-center gap-4 px-3 py-2 border-t border-[var(--border)] bg-[var(--surface)]">
+        {eventsLoading ? (
+          <div className="flex items-center gap-1.5 text-[var(--text-faint)]">
+            <Loader2 size={10} className="animate-spin" />
+            <span className="font-mono" style={{ fontSize: '10px' }}>Loading calendar…</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-[var(--surface-2)] border border-[var(--border-strong)]" />
+            <span className="font-mono text-[var(--text-faint)]" style={{ fontSize: '10px' }}>Your events</span>
+          </div>
+        )}
+        {hasProposed && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-[var(--accent)]/10 border border-dashed border-[var(--accent)]/70" />
+            <span className="font-mono text-[var(--accent)]" style={{ fontSize: '10px' }}>Proposed</span>
+          </div>
+        )}
+        {hasConfirmed && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-[var(--accent)]/20 border border-[var(--accent)]" />
+            <span className="font-mono text-[var(--accent)]" style={{ fontSize: '10px' }}>Scheduled</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── Prefs form ────────────────────────────────────────────────────────────────
@@ -68,71 +353,51 @@ function PrefsForm({ prefs, onChange, disabled }: PrefsFormProps) {
 
   return (
     <div className="surface-border rounded-xl p-5 space-y-5">
-      {/* Days ahead */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-mono text-[var(--text-dim)]">Plan ahead</label>
           <span className="text-sm font-medium text-[var(--text)]">{prefs.days_ahead} day{prefs.days_ahead !== 1 ? 's' : ''}</span>
         </div>
         <input
-          type="range"
-          min={1}
-          max={14}
-          value={prefs.days_ahead}
-          disabled={disabled}
+          type="range" min={1} max={14} value={prefs.days_ahead} disabled={disabled}
           onChange={(e) => onChange({ ...prefs, days_ahead: Number(e.target.value) })}
           className="w-full accent-[var(--accent)] disabled:opacity-50"
         />
         <div className="flex justify-between text-xs text-[var(--text-faint)] mt-1">
-          <span>1 day</span>
-          <span>14 days</span>
+          <span>1 day</span><span>14 days</span>
         </div>
       </div>
 
-      {/* Schedule window */}
       <div>
         <label className="block text-xs font-mono text-[var(--text-dim)] mb-2">Schedule window</label>
         <div className="flex items-center gap-2">
           <select
-            value={prefs.day_start_hour}
-            disabled={disabled}
+            value={prefs.day_start_hour} disabled={disabled}
             onChange={(e) => {
               const v = Number(e.target.value);
-              onChange({
-                ...prefs,
-                day_start_hour: v,
-                day_end_hour: prefs.day_end_hour <= v ? v + 1 : prefs.day_end_hour,
-              });
+              onChange({ ...prefs, day_start_hour: v, day_end_hour: prefs.day_end_hour <= v ? v + 1 : prefs.day_end_hour });
             }}
             className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
           >
-            {startOptions.map((h) => (
-              <option key={h} value={h}>{formatHour(h)}</option>
-            ))}
+            {startOptions.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
           </select>
           <span className="text-[var(--text-faint)] text-sm">to</span>
           <select
-            value={prefs.day_end_hour}
-            disabled={disabled}
+            value={prefs.day_end_hour} disabled={disabled}
             onChange={(e) => onChange({ ...prefs, day_end_hour: Number(e.target.value) })}
             className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
           >
-            {endOptions.map((h) => (
-              <option key={h} value={h}>{formatHour(h)}</option>
-            ))}
+            {endOptions.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Max session length */}
       <div>
         <label className="block text-xs font-mono text-[var(--text-dim)] mb-2">Max session length</label>
         <div className="flex gap-2 flex-wrap">
           {SESSION_STOPS.map((mins) => (
             <button
-              key={mins}
-              type="button"
-              disabled={disabled}
+              key={mins} type="button" disabled={disabled}
               onClick={() => onChange({ ...prefs, max_session_minutes: mins })}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors disabled:opacity-50 ${
                 prefs.max_session_minutes === mins
@@ -149,37 +414,15 @@ function PrefsForm({ prefs, onChange, disabled }: PrefsFormProps) {
   );
 }
 
-// ── Proposed block card ───────────────────────────────────────────────────────
-
-function ProposedBlockCard({ block }: { block: ProposedBlock }) {
-  return (
-    <div className="surface-border rounded-xl p-4 space-y-1">
-      <p className="text-sm font-medium text-[var(--text)]">{block.title}</p>
-      {block.description && (
-        <p className="text-xs text-[var(--text-dim)]">{block.description}</p>
-      )}
-      <div className="flex items-center gap-2 text-xs text-[var(--text-faint)] font-mono pt-1">
-        <Clock size={11} />
-        <span>{formatTime(block.start_at)} – {formatTime(block.end_at)}</span>
-        <span>·</span>
-        <span>{block.duration_minutes}m</span>
-      </div>
-    </div>
-  );
-}
-
 // ── Saved block card ──────────────────────────────────────────────────────────
 
 function SavedBlockCard({ block }: { block: StudyBlock }) {
   const deleteBlock = useDeleteStudyBlock();
-
   return (
     <div className="surface-border rounded-xl p-4 flex items-start gap-3">
       <div className="flex-1 space-y-1 min-w-0">
         <p className="text-sm font-medium text-[var(--text)] truncate">{block.title}</p>
-        {block.description && (
-          <p className="text-xs text-[var(--text-dim)] line-clamp-2">{block.description}</p>
-        )}
+        {block.description && <p className="text-xs text-[var(--text-dim)] line-clamp-2">{block.description}</p>}
         <div className="flex items-center gap-2 text-xs text-[var(--text-faint)] font-mono pt-1">
           <Clock size={11} />
           <span>{formatTime(block.start_at)} – {formatTime(block.end_at)}</span>
@@ -188,9 +431,7 @@ function SavedBlockCard({ block }: { block: StudyBlock }) {
         </div>
       </div>
       <button
-        onClick={() => deleteBlock.mutate(block.id, {
-          onError: () => toast.error('Failed to delete block'),
-        })}
+        onClick={() => deleteBlock.mutate(block.id, { onError: () => toast.error('Failed to delete block') })}
         disabled={deleteBlock.isPending}
         className="flex-shrink-0 p-1.5 rounded-lg text-[var(--text-faint)] hover:text-[var(--danger)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50"
         aria-label="Delete study block"
@@ -203,66 +444,54 @@ function SavedBlockCard({ block }: { block: StudyBlock }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const DEFAULT_PREFS: PlanningPrefs = {
-  days_ahead: 7,
-  day_start_hour: 8,
-  day_end_hour: 22,
-  max_session_minutes: 120,
-};
-
-type PlannerState = 'idle' | 'previewing' | 'confirmed';
-
 export default function PlannerPage() {
-  const [prefs, setPrefs] = useState<PlanningPrefs>(DEFAULT_PREFS);
-  const [plannerState, setPlannerState] = useState<PlannerState>('idle');
-  const [proposedBlocks, setProposedBlocks] = useState<ProposedBlock[]>([]);
-  const [previewError, setPreviewError] = useState('');
+  // Prefs persisted in localStorage so they survive refresh.
+  const [prefs, setPrefsState] = useState<PlanningPrefs>(loadPrefs);
+  const setPrefs = useCallback((p: PlanningPrefs) => {
+    setPrefsState(p);
+    savePrefs(p);
+  }, []);
+
+  const queryClient = useQueryClient();
 
   const { data: gcalConnected, isLoading: gcalLoading } = useGoogleCalendarConnected();
   const { data: savedBlocks = [], isLoading: blocksLoading } = useStudyBlocks();
-  const previewPlan = usePreviewStudyPlan();
+
+  // Proposed blocks live in TanStack cache — survive navigation within session.
+  const { data: proposedBlocks = [] } = usePlannerPreview();
+
+  // Calendar events cached for 5 min; seeded by preview response so no
+  // extra round-trip is needed after generating a plan.
+  const { data: calendarEvents = [], isLoading: eventsLoading } = useCalendarEvents(prefs.days_ahead);
+
+  const { generating, triggerGenerate } = usePlanner();
   const confirmPlan = useConfirmStudyPlan();
 
-  const hasSavedBlocks = savedBlocks.length > 0;
+  // Derive planner state — no separate useState needed.
+  type PlannerState = 'idle' | 'previewing' | 'confirmed';
+  const plannerState: PlannerState =
+    proposedBlocks.length > 0 ? 'previewing' :
+    savedBlocks.length > 0 ? 'confirmed' : 'idle';
 
-  // Show saved blocks view if they exist and we're not in preview mode
-  const effectiveState: PlannerState =
-    plannerState === 'previewing'
-      ? 'previewing'
-      : hasSavedBlocks
-      ? 'confirmed'
-      : 'idle';
+  const calVisStart = Math.max(0, prefs.day_start_hour - 1);
+  const calVisEnd = Math.min(23, prefs.day_end_hour);
 
-  async function handleGenerate() {
-    setPreviewError('');
-    previewPlan.mutate(prefs, {
-      onSuccess: (blocks) => {
-        setProposedBlocks(blocks);
-        setPlannerState('previewing');
-      },
-      onError: (err) => {
-        setPreviewError(err instanceof Error ? err.message : 'Failed to generate plan');
-      },
-    });
+  function handleGenerate() {
+    triggerGenerate(prefs);
   }
 
-  async function handlePush() {
+  function handlePush() {
     confirmPlan.mutate(proposedBlocks, {
       onSuccess: (result) => {
         toast.success(`${result.pushed} study block${result.pushed !== 1 ? 's' : ''} added to Google Calendar`);
-        setPlannerState('confirmed');
-        setProposedBlocks([]);
+        // QK.plannerPreview cleared + QK.studyBlocks invalidated in useConfirmStudyPlan.onSuccess
       },
-      onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to push to calendar');
-      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to push to calendar'),
     });
   }
 
   function handleRegenerate() {
-    setPlannerState('idle');
-    setProposedBlocks([]);
-    setPreviewError('');
+    queryClient.setQueryData(QK.plannerPreview, []);
   }
 
   // ── Loading ──────────────────────────────────────────────────
@@ -306,9 +535,6 @@ export default function PlannerPage() {
 
   // ── Connected ────────────────────────────────────────────────
 
-  const groupedProposed = groupByDate(proposedBlocks);
-  const groupedSaved = groupByDate(savedBlocks);
-
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-8">
       <div>
@@ -316,33 +542,42 @@ export default function PlannerPage() {
         <p className="text-[var(--text-dim)] text-sm mt-1">AI-generated study blocks synced to Google Calendar</p>
       </div>
 
-      {/* ── State: idle or regenerating ── */}
-      {effectiveState === 'idle' && (
+      {/* ── Calendar — always visible at top ── */}
+      <WeekCalendar
+        daysCount={prefs.days_ahead}
+        visStartHour={calVisStart}
+        visEndHour={calVisEnd}
+        existingEvents={calendarEvents}
+        eventsLoading={eventsLoading}
+        proposedBlocks={plannerState === 'previewing' ? proposedBlocks : []}
+        confirmedBlocks={plannerState === 'confirmed' ? savedBlocks : []}
+      />
+
+      {/* ── State: idle ── */}
+      {plannerState === 'idle' && (
         <div className="space-y-6">
-          <PrefsForm prefs={prefs} onChange={setPrefs} disabled={previewPlan.isPending} />
+          <PrefsForm prefs={prefs} onChange={setPrefs} disabled={generating} />
 
-          {previewError && (
-            <div className="flex items-center gap-2 text-[var(--danger)] text-sm">
-              <AlertCircle size={14} />
-              {previewError}
-            </div>
-          )}
-
-          <button
-            onClick={handleGenerate}
-            disabled={previewPlan.isPending}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {previewPlan.isPending
-              ? <><Loader2 size={14} className="animate-spin" /> Generating…</>
-              : <><Sparkles size={14} /> Generate Study Plan</>
-            }
-          </button>
+          <div className="space-y-1.5">
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {generating
+                ? <><Loader2 size={14} className="animate-spin" /> Generating…</>
+                : <><Sparkles size={14} /> Generate Study Plan</>
+              }
+            </button>
+            <p className="text-xs text-[var(--text-faint)]">
+              Usually takes 15–30 seconds. You can navigate away — we'll notify you when it's ready.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* ── State: previewing Gemini proposals ── */}
-      {effectiveState === 'previewing' && (
+      {/* ── State: previewing ── */}
+      {plannerState === 'previewing' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--text-dim)]">
@@ -357,44 +592,45 @@ export default function PlannerPage() {
             </button>
           </div>
 
-          {proposedBlocks.length === 0 ? (
-            <div className="surface-border rounded-xl p-8 text-center text-[var(--text-faint)] text-sm">
-              No study blocks could be scheduled — all assignments may already be submitted or past due.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {groupedProposed.map(([day, blocks]) => (
-                <div key={day}>
-                  <p className="text-xs font-mono text-[var(--text-faint)] mb-3 uppercase tracking-wide">
-                    {formatDateLabel(blocks[0].start_at)}
-                  </p>
-                  <div className="space-y-2">
-                    {blocks.map((b, i) => (
-                      <ProposedBlockCard key={i} block={b} />
-                    ))}
-                  </div>
+          <div className="space-y-6">
+            {groupByDate(proposedBlocks).map(([day, blocks]) => (
+              <div key={day}>
+                <p className="text-xs font-mono text-[var(--text-faint)] mb-3 uppercase tracking-wide">
+                  {formatDateLabel(blocks[0].start_at)}
+                </p>
+                <div className="space-y-2">
+                  {blocks.map((b, i) => (
+                    <div key={i} className="surface-border rounded-xl p-4 space-y-1">
+                      <p className="text-sm font-medium text-[var(--text)]">{b.title}</p>
+                      {b.description && <p className="text-xs text-[var(--text-dim)]">{b.description}</p>}
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-faint)] font-mono pt-1">
+                        <Clock size={11} />
+                        <span>{formatTime(b.start_at)} – {formatTime(b.end_at)}</span>
+                        <span>·</span>
+                        <span>{b.duration_minutes}m</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
 
-          {proposedBlocks.length > 0 && (
-            <button
-              onClick={handlePush}
-              disabled={confirmPlan.isPending}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {confirmPlan.isPending
-                ? <><Loader2 size={14} className="animate-spin" /> Pushing to Calendar…</>
-                : <><CheckCircle2 size={14} /> Push to Google Calendar</>
-              }
-            </button>
-          )}
+          <button
+            onClick={handlePush}
+            disabled={confirmPlan.isPending}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {confirmPlan.isPending
+              ? <><Loader2 size={14} className="animate-spin" /> Adding to Calendar…</>
+              : <><CheckCircle2 size={14} /> Add to Google Calendar</>
+            }
+          </button>
         </div>
       )}
 
-      {/* ── State: saved blocks exist ── */}
-      {effectiveState === 'confirmed' && (
+      {/* ── State: confirmed (saved blocks exist) ── */}
+      {plannerState === 'confirmed' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--text-dim)]">
@@ -402,7 +638,7 @@ export default function PlannerPage() {
             </p>
             <button
               onClick={handleRegenerate}
-              disabled={previewPlan.isPending}
+              disabled={generating}
               className="flex items-center gap-1.5 text-xs text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
             >
               <Sparkles size={12} />
@@ -417,15 +653,13 @@ export default function PlannerPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {groupedSaved.map(([day, blocks]) => (
+              {groupByDate(savedBlocks).map(([day, blocks]) => (
                 <div key={day}>
                   <p className="text-xs font-mono text-[var(--text-faint)] mb-3 uppercase tracking-wide">
                     {formatDateLabel(blocks[0].start_at)}
                   </p>
                   <div className="space-y-2">
-                    {blocks.map((b) => (
-                      <SavedBlockCard key={b.id} block={b} />
-                    ))}
+                    {blocks.map((b) => <SavedBlockCard key={b.id} block={b} />)}
                   </div>
                 </div>
               ))}

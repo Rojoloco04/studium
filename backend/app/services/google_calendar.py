@@ -224,7 +224,12 @@ def get_upcoming_events(user_id: str, days: int = 14) -> list[dict]:
     for item in result.get("items", []):
         start = item["start"].get("dateTime") or item["start"].get("date")
         end = item["end"].get("dateTime") or item["end"].get("date")
-        events.append({"title": item.get("summary", ""), "start": start, "end": end})
+        events.append({
+            "id": item.get("id", ""),
+            "title": item.get("summary", ""),
+            "start": start,
+            "end": end,
+        })
     return events
 
 

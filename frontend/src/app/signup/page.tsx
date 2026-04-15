@@ -40,9 +40,10 @@ export default function SignupPage() {
     localStorage.removeItem('studium_ephemeral');
     sessionStorage.removeItem('studium_session_active');
     localStorage.setItem('studium_stay_signed_in', '1');
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || location.origin;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback` },
+      options: { redirectTo: `${origin}/auth/callback` },
     });
   }
 
@@ -50,10 +51,11 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || location.origin;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+      options: { emailRedirectTo: `${origin}/auth/callback` },
     });
     if (error) {
       setError(error.message);

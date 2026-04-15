@@ -85,6 +85,9 @@ class PlanningPrefs(BaseModel):
     day_start_hour: int = Field(default=8, ge=5, le=20)
     day_end_hour: int = Field(default=22, ge=8, le=23)
     max_session_minutes: int = Field(default=120, ge=30, le=180)
+    # IANA timezone string detected from browser (e.g. "America/Chicago").
+    # Must be sent by the frontend so Gemini schedules in local time, not UTC.
+    timezone: str = Field(default="UTC", max_length=60)
 
     @model_validator(mode="after")
     def end_after_start(self):
@@ -103,12 +106,24 @@ class ProposedBlock(BaseModel):
     duration_minutes: int
 
 
+class CalendarEventOut(BaseModel):
+    """A single Google Calendar event returned to the frontend for display."""
+    id: str = ""
+    title: str
+    start: str  # ISO datetime string or YYYY-MM-DD for all-day events
+    end: str
+
+
 class PreviewPlanRequest(BaseModel):
     prefs: PlanningPrefs = Field(default_factory=PlanningPrefs)
 
 
 class PreviewPlanResponse(BaseModel):
     blocks: list[ProposedBlock]
+    # Existing calendar events are returned alongside proposed blocks so the
+    # frontend can render both on the same visual calendar without a second
+    # round-trip (cache the events in TanStack, read locally during preview).
+    calendar_events: list[CalendarEventOut] = []
 
 
 class ConfirmPlanRequest(BaseModel):

@@ -50,18 +50,20 @@ studium/
 - Light/dark theme via `ThemeProvider` (`lib/theme.tsx`); CSS vars split into `:root` (light) and `[data-theme="dark"]`
 - `SessionGuard` (`lib/session-guard.tsx`) for persistent session handling
 - PWA metadata (manifest, icons, Apple Web App, theme color) in `layout.tsx`
-- React Query hooks in `lib/queries.ts`: `useCourses`, `useAllCourses`, `useAssignments`, `useAssignmentGroups`, `useCanvasConnected`, `useToggleSubmitted`, `useToggleHideCourse`
+- React Query hooks in `lib/queries.ts`: `useCourses`, `useAllCourses`, `useAssignments`, `useAssignmentGroups`, `useCanvasConnected`, `useToggleSubmitted`, `useToggleHideCourse`, `useGoogleCalendarConnected`, `useStudyBlocks`, `useCalendarEvents`, `usePlannerPreview`, `usePreviewStudyPlan`, `useConfirmStudyPlan`, `useDeleteStudyBlock`
 - Assignments page — filter tabs (all/upcoming/past due/finished), per-course dropdown filter, "Mark done" toggle with optimistic update, color-coded due dates
 - Dashboard page — live stat cards (course count, due this week, avg grade, at-risk); time-based greeting with first name; upcoming assignments list with hover "Mark done"; contextual encouragement message; loading skeletons throughout
 - Course hiding — `hidden boolean` column on `courses` table; hide button on course cards (hover) and course detail page; hidden courses manager in Settings to unhide; hidden courses filtered from all views and assignment lists
 - Mobile-responsive layout — fixed top header + slide-in drawer on mobile; desktop sidebar unchanged; `SyncProvider` (`lib/sync-provider.tsx`) provides global sync state (`syncing`, `triggerSync`) consumed by layout spinner and Settings sync button
 - Nav order: Dashboard → Courses → Assignments → Grades → Planner → Upload Syllabus
+- Google Calendar OAuth — PKCE flow; tokens Fernet-encrypted at rest; auto-refresh on expiry; connect/disconnect in Settings
+- Study Planner — scheduling prefs (days ahead, local-time window, max session length); `PlannerProvider` (`lib/planner-provider.tsx`) runs Gemini generation globally so navigation away doesn't cancel it; toast on completion; proposed blocks cached in TanStack (`QK.plannerPreview`, survives navigation); week-view `WeekCalendar` component always visible showing existing GCal events (gray) + proposed (dashed accent) + confirmed (solid accent) blocks; prefs persisted in `localStorage`
+- Timezone-aware scheduling — browser timezone detected via `Intl.DateTimeFormat().resolvedOptions().timeZone` and sent with every plan request; Gemini prompt uses the resolved UTC offset so sessions are scheduled in local time, not UTC
+- OAuth redirect fix — Google sign-in uses `NEXT_PUBLIC_SITE_URL` env var so deployed builds redirect to the correct domain instead of Supabase's configured Site URL
 
 ## Not yet built
 
 - Gemini syllabus parser
-- Google Calendar sync
-- Planner page
 - Daily digest / AI-generated summary
 
 ## Dev

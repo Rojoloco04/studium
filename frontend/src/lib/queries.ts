@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import type { Assignment, AssignmentGroup, Course, StudyBlock, ProposedBlock, PlanningPrefs } from '@/lib/types';
+import type { Assignment, AssignmentGroup, Course, StudyBlock, ProposedBlock, PlanningPrefs, CalendarEvent } from '@/lib/types';
 
 // Query keys — centralised so every page uses the same cache bucket.
 export const QK = {
@@ -11,6 +11,11 @@ export const QK = {
   assignmentGroups: ['assignment_groups'] as const,
   googleCalendarConnected: ['google-calendar', 'connected'] as const,
   studyBlocks: ['study_blocks'] as const,
+  // Parameterised: calendarEvents(7) vs calendarEvents(14) are separate cache entries.
+  calendarEvents: (days: number) => ['calendar_events', days] as const,
+  // Planner preview blocks — stored in cache so navigating away and back
+  // doesn't lose a generated plan. Cleared on confirm or explicit regenerate.
+  plannerPreview: ['planner', 'preview'] as const,
 };
 
 function getSupabase() {
@@ -211,8 +216,9 @@ async function getAuthHeaders() {
 }
 
 export function usePreviewStudyPlan() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (prefs: PlanningPrefs): Promise<ProposedBlock[]> => {
+    mutationFn: async (prefs: PlanningPrefs): Promise<{ blocks: ProposedBlock[]; calendarEvents: CalendarEvent[] }> => {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API}/api/google-calendar/preview-plan`, {
         method: 'POST',
@@ -224,8 +230,51 @@ export function usePreviewStudyPlan() {
         throw new Error(data.detail || `Error ${res.status}`);
       }
       const data = await res.json();
-      return data.blocks as ProposedBlock[];
+      return {
+        blocks: data.blocks as ProposedBlock[],
+        calendarEvents: (data.calendar_events ?? []) as CalendarEvent[],
+      };
     },
+    onSuccess: ({ blocks, calendarEvents }, prefs) => {
+      // Seed both caches from the single preview response so the planner page
+      // can render the full calendar without a second round-trip.
+      queryClient.setQueryData(QK.calendarEvents(prefs.days_ahead), calendarEvents);
+      // Store proposed blocks in cache — survives navigation away and back.
+      queryClient.setQueryData(QK.plannerPreview, blocks);
+    },
+  });
+}
+
+// ─── Planner preview blocks ───────────────────────────────────────────────────
+// Proposed blocks live in the TanStack cache (not component state) so they
+// survive navigation. usePreviewStudyPlan.onSuccess writes here; clearing is
+// done by the page via queryClient.setQueryData(QK.plannerPreview, []).
+
+export function usePlannerPreview() {
+  return useQuery({
+    queryKey: QK.plannerPreview,
+    // Never fetches from network — only populated by setQueryData.
+    queryFn: (): ProposedBlock[] => [],
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 30, // evict 30 min after last observer unmounts
+  });
+}
+
+// ─── Calendar events (read-only, for UI display) ─────────────────────────────
+// Pattern: fetch once into TanStack cache (staleTime: 5min), read locally in
+// components, never call the API directly from component code.
+
+export function useCalendarEvents(days: number) {
+  return useQuery({
+    queryKey: QK.calendarEvents(days),
+    queryFn: async (): Promise<CalendarEvent[]> => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API}/api/google-calendar/events?days=${days}`, { headers });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data as CalendarEvent[];
+    },
+    staleTime: 1000 * 60 * 5, // 5 min — Google Calendar data doesn't change mid-session
   });
 }
 
@@ -249,6 +298,8 @@ export function useConfirmStudyPlan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.studyBlocks });
+      // Clear proposed blocks cache — plan is now confirmed, no longer a preview.
+      queryClient.setQueryData(QK.plannerPreview, []);
     },
   });
 }

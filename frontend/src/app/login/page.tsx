@@ -43,9 +43,12 @@ export default function LoginPage() {
     localStorage.removeItem('studium_ephemeral');
     sessionStorage.removeItem('studium_session_active');
     localStorage.setItem('studium_stay_signed_in', '1');
+    // Use explicit NEXT_PUBLIC_SITE_URL so deployed environments don't fall back
+    // to Supabase's configured Site URL (which defaults to localhost).
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || location.origin;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback` },
+      options: { redirectTo: `${origin}/auth/callback` },
     });
   }
 
