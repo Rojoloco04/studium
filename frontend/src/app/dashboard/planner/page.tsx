@@ -570,7 +570,7 @@ export default function PlannerPage() {
               }
             </button>
             <p className="text-xs text-[var(--text-faint)]">
-              Usually takes 15–30 seconds. You can navigate away — we'll notify you when it's ready.
+              Usually takes 15&ndash;30 seconds. You can navigate away &mdash; we&apos;ll notify you when it&apos;s ready.
             </p>
           </div>
         </div>
