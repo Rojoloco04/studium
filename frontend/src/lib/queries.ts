@@ -336,6 +336,26 @@ export function useDeleteStudyBlock() {
   });
 }
 
+// ─── Sync study blocks (remove orphans whose GCal event was deleted) ─────────
+
+export function useSyncStudyBlocks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<{ removed: number }> => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API}/api/google-calendar/sync-study-blocks`, {
+        method: 'POST',
+        headers,
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.studyBlocks });
+    },
+  });
+}
+
 // ─── Toggle course hidden ────────────────────────────────────────────────────
 
 export function useToggleHideCourse() {

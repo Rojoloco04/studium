@@ -1,7 +1,17 @@
 import logging
+import re
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
+
+_UUID_RE = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE,
+)
+
+def _valid_uuid(v: str | None) -> str | None:
+    """Return v if it's a well-formed UUID, else None (prevents Postgres errors)."""
+    return v if v and _UUID_RE.match(v) else None
 from fastapi.responses import RedirectResponse
 
 logger = logging.getLogger(__name__)
@@ -18,6 +28,7 @@ from app.models.schemas import (
     ConfirmPlanRequest,
     ConfirmPlanResponse,
     StudyBlockOut,
+    SyncStudyBlocksResponse,
 )
 from app.services.google_calendar import (
     build_auth_url,
@@ -224,8 +235,8 @@ async def confirm_plan(
 
         row = {
             "user_id": user_id,
-            "assignment_id": block.assignment_id,
-            "course_id": block.course_id,
+            "assignment_id": _valid_uuid(block.assignment_id),
+            "course_id": _valid_uuid(block.course_id),
             "gcal_event_id": gcal_event_id,
             "title": block.title,
             "description": block.description,
@@ -240,6 +251,49 @@ async def confirm_plan(
             pushed += 1
 
     return ConfirmPlanResponse(pushed=pushed, study_block_ids=block_ids)
+
+
+# ── Sync study blocks (remove orphans whose GCal event was deleted) ───────────
+
+@router.post("/sync-study-blocks", response_model=SyncStudyBlocksResponse)
+async def sync_study_blocks(user_id: str = Depends(get_current_user_id)):
+    """
+    Compare study blocks in the DB against live Google Calendar events.
+    Any block with a gcal_event_id that no longer exists in GCal is deleted
+    from the DB. Only future/ongoing blocks are checked (past blocks are ignored).
+    """
+    db = get_supabase()
+
+    now = datetime.now(timezone.utc)
+
+    # Fetch upcoming study blocks that have a GCal event ID.
+    blocks_resp = (
+        db.table("study_blocks")
+        .select("id,gcal_event_id,end_at")
+        .eq("user_id", user_id)
+        .not_.is_("gcal_event_id", "null")
+        .gte("end_at", now.isoformat())
+        .execute()
+    )
+    blocks = blocks_resp.data or []
+    if not blocks:
+        return SyncStudyBlocksResponse(removed=0)
+
+    # Fetch GCal events for a 60-day window to cover all upcoming blocks.
+    try:
+        gcal_events = get_upcoming_events(user_id, days=60)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to read Google Calendar")
+
+    live_event_ids = {e["id"] for e in gcal_events if e.get("id")}
+
+    # Find orphaned blocks.
+    orphan_ids = [b["id"] for b in blocks if b["gcal_event_id"] not in live_event_ids]
+
+    for block_id in orphan_ids:
+        db.table("study_blocks").delete().eq("id", block_id).eq("user_id", user_id).execute()
+
+    return SyncStudyBlocksResponse(removed=len(orphan_ids))
 
 
 # ── Calendar events (read-only, for UI display) ───────────────────────────────

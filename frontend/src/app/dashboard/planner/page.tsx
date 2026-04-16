@@ -14,6 +14,7 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
 import {
   QK,
@@ -23,6 +24,7 @@ import {
   usePlannerPreview,
   useConfirmStudyPlan,
   useDeleteStudyBlock,
+  useSyncStudyBlocks,
 } from '@/lib/queries';
 import { usePlanner } from '@/lib/planner-provider';
 import type { ProposedBlock, StudyBlock, PlanningPrefs, CalendarEvent } from '@/lib/types';
@@ -125,6 +127,9 @@ interface WeekCalendarProps {
   eventsLoading?: boolean;
   proposedBlocks?: ProposedBlock[];
   confirmedBlocks?: StudyBlock[];
+  onSync?: () => void;
+  onDeleteBlock?: (id: string) => void;
+  deletingBlockId?: string | null;
 }
 
 function WeekCalendar({
@@ -135,6 +140,9 @@ function WeekCalendar({
   eventsLoading = false,
   proposedBlocks = [],
   confirmedBlocks = [],
+  onSync,
+  onDeleteBlock,
+  deletingBlockId,
 }: WeekCalendarProps) {
   const [page, setPage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -288,17 +296,28 @@ function WeekCalendar({
 
             {confirmedOn(day).map((b, i) => {
               const p = pos(b.start_at, b.end_at);
+              const isDeleting = deletingBlockId === b.id;
               return (
                 <div
                   key={i}
                   title={b.title}
-                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--accent)]/20 border border-[var(--accent)]"
+                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--accent)]/20 border border-[var(--accent)] group"
                   style={{ top: p.top, height: p.height }}
                 >
                   {p.height >= 18 && (
-                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px" style={{ fontSize: '9px' }}>
+                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px pr-3" style={{ fontSize: '9px' }}>
                       {b.title}
                     </p>
+                  )}
+                  {onDeleteBlock && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteBlock(b.id); }}
+                      disabled={isDeleting}
+                      className="absolute top-0.5 right-0.5 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 rounded bg-[var(--danger)] text-white disabled:opacity-50"
+                      title="Delete block"
+                    >
+                      {isDeleting ? <Loader2 size={7} className="animate-spin" /> : <X size={7} />}
+                    </button>
                   )}
                 </div>
               );
@@ -331,6 +350,17 @@ function WeekCalendar({
             <div className="w-3 h-3 rounded bg-[var(--accent)]/20 border border-[var(--accent)]" />
             <span className="font-mono text-[var(--accent)]" style={{ fontSize: '10px' }}>Scheduled</span>
           </div>
+        )}
+        {onSync && (
+          <button
+            onClick={onSync}
+            disabled={eventsLoading}
+            className="ml-auto flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--text)] disabled:opacity-40 transition-colors"
+            title="Sync calendar"
+          >
+            <RefreshCw size={10} className={eventsLoading ? 'animate-spin' : ''} />
+            <span className="font-mono" style={{ fontSize: '10px' }}>Sync</span>
+          </button>
         )}
       </div>
     </div>
@@ -462,10 +492,12 @@ export default function PlannerPage() {
 
   // Calendar events cached for 5 min; seeded by preview response so no
   // extra round-trip is needed after generating a plan.
-  const { data: calendarEvents = [], isLoading: eventsLoading } = useCalendarEvents(prefs.days_ahead);
+  const { data: calendarEvents = [], isFetching: eventsLoading } = useCalendarEvents(prefs.days_ahead);
 
   const { generating, triggerGenerate } = usePlanner();
   const confirmPlan = useConfirmStudyPlan();
+  const deleteBlock = useDeleteStudyBlock();
+  const syncBlocks = useSyncStudyBlocks();
 
   // Derive planner state — no separate useState needed.
   type PlannerState = 'idle' | 'previewing' | 'confirmed';
@@ -492,6 +524,18 @@ export default function PlannerPage() {
 
   function handleRegenerate() {
     queryClient.setQueryData(QK.plannerPreview, []);
+  }
+
+  async function handleSyncCalendar() {
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: QK.calendarEvents(prefs.days_ahead) }),
+      syncBlocks.mutateAsync(),
+    ]);
+    toast.success('Calendar synced');
+  }
+
+  function handleDeleteBlock(id: string) {
+    deleteBlock.mutate(id, { onError: () => toast.error('Failed to delete block') });
   }
 
   // ── Loading ──────────────────────────────────────────────────
@@ -551,6 +595,9 @@ export default function PlannerPage() {
         eventsLoading={eventsLoading}
         proposedBlocks={plannerState === 'previewing' ? proposedBlocks : []}
         confirmedBlocks={plannerState === 'confirmed' ? savedBlocks : []}
+        onSync={handleSyncCalendar}
+        onDeleteBlock={plannerState === 'confirmed' ? handleDeleteBlock : undefined}
+        deletingBlockId={deleteBlock.isPending ? deleteBlock.variables : null}
       />
 
       {/* ── State: idle ── */}

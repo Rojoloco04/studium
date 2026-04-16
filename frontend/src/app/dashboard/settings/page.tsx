@@ -325,6 +325,7 @@ function GoogleCalendarSection() {
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
 
   const { data: status, isLoading } = useQuery<GCalStatus>({
@@ -349,6 +350,18 @@ function GoogleCalendarSection() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setConnecting(false);
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['calendar_events'] });
+      toast.success('Calendar synced');
+    } catch {
+      toast.error('Failed to sync calendar');
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -396,13 +409,26 @@ function GoogleCalendarSection() {
           </div>
         )}
 
-        <button
-          onClick={() => setConfirmDisconnect(true)}
-          className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors"
-        >
-          <Link2Off size={14} />
-          Disconnect Google Calendar
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing…' : 'Sync calendar'}
+          </button>
+
+          <span className="text-[var(--border-strong)] select-none">·</span>
+
+          <button
+            onClick={() => setConfirmDisconnect(true)}
+            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors"
+          >
+            <Link2Off size={14} />
+            Disconnect Google Calendar
+          </button>
+        </div>
 
         {confirmDisconnect && (
           <div className="surface-border rounded-xl p-4 space-y-3">

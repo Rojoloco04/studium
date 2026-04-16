@@ -146,3 +146,7 @@ class StudyBlockOut(BaseModel):
     end_at: datetime
     duration_minutes: int
     status: str
+
+
+class SyncStudyBlocksResponse(BaseModel):
+    removed: int
