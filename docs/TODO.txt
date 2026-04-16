@@ -1,3 +1,7 @@
+fixes needed:
+- calendar sync doesn't display my events from GCal
+- google signin redirect still goes to localhost
+
 daily digest with notification
 RMP integration
 course/degree planning 
