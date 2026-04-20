@@ -4,12 +4,13 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Menu, X } from 'lucide-react';
 import clsx from 'clsx';
 import { SyncProvider, useSyncCanvas } from '@/lib/sync-provider';
 import { PlannerProvider, usePlanner } from '@/lib/planner-provider';
 import { useTheme } from '@/lib/theme';
+import { prefetchForRoute } from '@/lib/queries';
 
 const NAV_GROUPS = [
   {
@@ -70,6 +71,8 @@ function NavGroup({
   generating: boolean;
   onClick?: () => void;
 }) {
+  const queryClient = useQueryClient();
+
   return (
     <div className="mb-8">
       <p
@@ -94,6 +97,7 @@ function NavGroup({
               key={href}
               href={href}
               onClick={onClick}
+              onMouseEnter={() => prefetchForRoute(queryClient, href)}
               className={clsx(
                 'relative flex items-center justify-between py-1.5 pl-3.5 pr-2 mb-px rounded-sm text-sm transition-colors',
                 active
@@ -189,7 +193,7 @@ function MobileHeader({ onOpen }: { onOpen: () => void }) {
 function MobileDrawer({ onClose, onSignOut }: { onClose: () => void; onSignOut: () => void }) {
   const pathname = usePathname();
   const { generating } = usePlanner();
-  const { theme, toggle } = useTheme();
+  const queryClient = useQueryClient();
 
   return (
     <div className="fixed inset-0 z-50 md:hidden">
@@ -245,6 +249,7 @@ function MobileDrawer({ onClose, onSignOut }: { onClose: () => void; onSignOut: 
             <Link
               href="/dashboard/settings"
               onClick={onClose}
+              onMouseEnter={() => prefetchForRoute(queryClient, '/dashboard/settings')}
               className={clsx(
                 'relative flex items-center py-1.5 pl-3.5 mb-px text-sm transition-colors',
                 pathname === '/dashboard/settings' ? 'text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
@@ -279,6 +284,7 @@ function Sidebar({ onSignOut }: { onSignOut: () => void }) {
   const pathname = usePathname();
   const { syncing } = useSyncCanvas();
   const { generating } = usePlanner();
+  const queryClient = useQueryClient();
 
   return (
     <aside
@@ -317,6 +323,7 @@ function Sidebar({ onSignOut }: { onSignOut: () => void }) {
           </p>
           <Link
             href="/dashboard/settings"
+            onMouseEnter={() => prefetchForRoute(queryClient, '/dashboard/settings')}
             className={clsx(
               'relative flex items-center py-1.5 pl-3.5 mb-px text-sm transition-colors',
               pathname === '/dashboard/settings' ? 'text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'

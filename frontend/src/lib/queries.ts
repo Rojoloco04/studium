@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, QueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import type { Assignment, AssignmentGroup, Course, StudyBlock, ProposedBlock, PlanningPrefs, CalendarEvent } from '@/lib/types';
 
@@ -24,43 +24,60 @@ function getSupabase() {
 
 // ─── Canvas connection status ───────────────────────────────────────────────
 
+async function fetchCanvasConnected(): Promise<boolean> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from('canvas_tokens')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  return !!data;
+}
+
 export function useCanvasConnected() {
   return useQuery({
     queryKey: QK.canvasConnected,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      const { data } = await supabase
-        .from('canvas_tokens')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return !!data;
-    },
-    staleTime: Infinity, // connection status only changes on the Canvas setup page
+    queryFn: fetchCanvasConnected,
+    staleTime: Infinity,
   });
 }
 
 // ─── Courses ────────────────────────────────────────────────────────────────
 
+async function fetchCourses(): Promise<Course[]> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('hidden', false)
+    .order('name');
+  if (error) throw error;
+  return (data as Course[]) ?? [];
+}
+
+async function fetchAllCourses(): Promise<Course[]> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('name');
+  if (error) throw error;
+  return (data as Course[]) ?? [];
+}
+
 export function useCourses() {
   return useQuery({
     queryKey: QK.courses,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [] as Course[];
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('hidden', false)
-        .order('name');
-      if (error) throw error;
-      return (data as Course[]) ?? [];
-    },
-    staleTime: 1000 * 60 * 5, // 5 min — data only changes after a Canvas sync
+    queryFn: fetchCourses,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -68,63 +85,56 @@ export function useCourses() {
 export function useAllCourses() {
   return useQuery({
     queryKey: QK.allCourses,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [] as Course[];
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-      if (error) throw error;
-      return (data as Course[]) ?? [];
-    },
+    queryFn: fetchAllCourses,
     staleTime: 1000 * 60 * 5,
   });
 }
 
 // ─── Assignments ─────────────────────────────────────────────────────────────
 
+async function fetchAssignments(): Promise<Assignment[]> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('assignments')
+    .select(
+      'id, name, due_at, points_possible, score, submitted, submission_types, course_id, assignment_group_id, estimated_hours, actual_hours, courses(name, course_code, hidden)'
+    )
+    .eq('user_id', user.id)
+    .order('due_at', { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  const all = (data as unknown as Assignment[]) ?? [];
+  return all.filter((a) => !a.courses?.hidden);
+}
+
 export function useAssignments() {
   return useQuery({
     queryKey: QK.assignments,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [] as Assignment[];
-      const { data, error } = await supabase
-        .from('assignments')
-        .select(
-          'id, name, due_at, points_possible, score, submitted, submission_types, course_id, assignment_group_id, estimated_hours, actual_hours, courses(name, course_code, hidden)'
-        )
-        .eq('user_id', user.id)
-        .order('due_at', { ascending: true, nullsFirst: false });
-      if (error) throw error;
-      const all = (data as unknown as Assignment[]) ?? [];
-      return all.filter((a) => !a.courses?.hidden);
-    },
+    queryFn: fetchAssignments,
     staleTime: 1000 * 60 * 5,
   });
 }
 
 // ─── Assignment groups ───────────────────────────────────────────────────────
 
+async function fetchAssignmentGroups(): Promise<AssignmentGroup[]> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('assignment_groups')
+    .select('id, canvas_id, course_id, name, group_weight')
+    .eq('user_id', user.id)
+    .order('name');
+  if (error) throw error;
+  return (data as AssignmentGroup[]) ?? [];
+}
+
 export function useAssignmentGroups() {
   return useQuery({
     queryKey: QK.assignmentGroups,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [] as AssignmentGroup[];
-      const { data, error } = await supabase
-        .from('assignment_groups')
-        .select('id, canvas_id, course_id, name, group_weight')
-        .eq('user_id', user.id)
-        .order('name');
-      if (error) throw error;
-      return (data as AssignmentGroup[]) ?? [];
-    },
+    queryFn: fetchAssignmentGroups,
     staleTime: 1000 * 60 * 5,
   });
 }
@@ -162,41 +172,45 @@ export function useToggleSubmitted() {
 
 // ─── Google Calendar connection status ───────────────────────────────────────
 
+async function fetchGoogleCalendarConnected(): Promise<boolean> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from('google_tokens')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  return !!data;
+}
+
 export function useGoogleCalendarConnected() {
   return useQuery({
     queryKey: QK.googleCalendarConnected,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      const { data } = await supabase
-        .from('google_tokens')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return !!data;
-    },
+    queryFn: fetchGoogleCalendarConnected,
     staleTime: Infinity,
   });
 }
 
 // ─── Study blocks ─────────────────────────────────────────────────────────────
 
+async function fetchStudyBlocks(): Promise<StudyBlock[]> {
+  const supabase = getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('study_blocks')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('start_at', { ascending: true });
+  if (error) throw error;
+  return (data as StudyBlock[]) ?? [];
+}
+
 export function useStudyBlocks() {
   return useQuery({
     queryKey: QK.studyBlocks,
-    queryFn: async () => {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [] as StudyBlock[];
-      const { data, error } = await supabase
-        .from('study_blocks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('start_at', { ascending: true });
-      if (error) throw error;
-      return (data as StudyBlock[]) ?? [];
-    },
+    queryFn: fetchStudyBlocks,
     staleTime: 1000 * 60 * 5,
   });
 }
@@ -391,5 +405,49 @@ export function useToggleHideCourse() {
       queryClient.invalidateQueries({ queryKey: QK.allCourses });
       queryClient.invalidateQueries({ queryKey: QK.assignments });
     },
+  });
+}
+
+// ─── Prefetch helpers ─────────────────────────────────────────────────────────
+// Call on nav link hover so data is warm before the user lands on the page.
+
+type PrefetchEntry = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> };
+
+const ROUTE_PREFETCH: Record<string, PrefetchEntry[]> = {
+  '/dashboard': [
+    { queryKey: QK.canvasConnected, queryFn: fetchCanvasConnected },
+    { queryKey: QK.courses, queryFn: fetchCourses },
+    { queryKey: QK.assignments, queryFn: fetchAssignments },
+  ],
+  '/dashboard/assignments': [
+    { queryKey: QK.canvasConnected, queryFn: fetchCanvasConnected },
+    { queryKey: QK.assignments, queryFn: fetchAssignments },
+  ],
+  '/dashboard/courses': [
+    { queryKey: QK.canvasConnected, queryFn: fetchCanvasConnected },
+    { queryKey: QK.courses, queryFn: fetchCourses },
+    { queryKey: QK.assignments, queryFn: fetchAssignments },
+  ],
+  '/dashboard/grades': [
+    { queryKey: QK.canvasConnected, queryFn: fetchCanvasConnected },
+    { queryKey: QK.courses, queryFn: fetchCourses },
+    { queryKey: QK.assignments, queryFn: fetchAssignments },
+    { queryKey: QK.assignmentGroups, queryFn: fetchAssignmentGroups },
+  ],
+  '/dashboard/planner': [
+    { queryKey: QK.googleCalendarConnected, queryFn: fetchGoogleCalendarConnected },
+    { queryKey: QK.studyBlocks, queryFn: fetchStudyBlocks },
+  ],
+  '/dashboard/settings': [
+    { queryKey: QK.canvasConnected, queryFn: fetchCanvasConnected },
+    { queryKey: QK.googleCalendarConnected, queryFn: fetchGoogleCalendarConnected },
+    { queryKey: QK.allCourses, queryFn: fetchAllCourses },
+  ],
+};
+
+export function prefetchForRoute(queryClient: QueryClient, route: string) {
+  const entries = ROUTE_PREFETCH[route] ?? [];
+  entries.forEach(({ queryKey, queryFn }) => {
+    queryClient.prefetchQuery({ queryKey, queryFn });
   });
 }
