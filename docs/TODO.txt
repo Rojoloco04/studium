@@ -1,6 +1,5 @@
 fixes needed:
 - calendar sync doesn't display my events from GCal
-- google signin redirect still goes to localhost
 - signin / landing pages still using old style
 
 daily digest with notification
