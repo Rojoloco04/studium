@@ -155,8 +155,9 @@ function WeekCalendar({
     return d;
   });
 
+  const GRID_PAD = 10;
   const visHours = visEndHour - visStartHour;
-  const totalHeight = visHours * HOUR_PX;
+  const totalHeight = visHours * HOUR_PX + GRID_PAD * 2;
   const timeLabels = Array.from({ length: visHours + 1 }, (_, i) => visStartHour + i);
   const today = new Date().toDateString();
 
@@ -179,7 +180,7 @@ function WeekCalendar({
     const offset = Math.max(0, sm - visStartHour * 60);
     const cappedEnd = Math.min(em, visEndHour * 60);
     const visible = Math.max(8, cappedEnd - Math.max(sm, visStartHour * 60));
-    return { top: offset * (HOUR_PX / 60), height: visible * (HOUR_PX / 60) };
+    return { top: GRID_PAD + offset * (HOUR_PX / 60), height: visible * (HOUR_PX / 60) };
   }
 
   const hasProposed = proposedBlocks.length > 0;
@@ -233,7 +234,7 @@ function WeekCalendar({
             <div
               key={h}
               className="absolute w-full text-right pr-1.5 font-mono text-[var(--text-faint)]"
-              style={{ top: i * HOUR_PX - 5, fontSize: '9px' }}
+              style={{ top: GRID_PAD + i * HOUR_PX - 5, fontSize: '9px' }}
             >
               {fmtHourShort(h)}
             </div>
@@ -251,7 +252,7 @@ function WeekCalendar({
               <div
                 key={i}
                 className="absolute w-full border-t border-[var(--border)]"
-                style={{ top: i * HOUR_PX }}
+                style={{ top: GRID_PAD + i * HOUR_PX }}
               />
             ))}
             {dk(day) === today && (
@@ -264,8 +265,8 @@ function WeekCalendar({
                 <div
                   key={i}
                   title={e.title || '(busy)'}
-                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--surface-2)] border border-[var(--border-strong)]"
-                  style={{ top: p.top, height: p.height }}
+                  className="absolute left-0.5 right-0.5 overflow-hidden bg-[var(--surface-2)] border border-[var(--border-strong)]"
+                  style={{ top: p.top, height: p.height, borderRadius: 1 }}
                 >
                   {p.height >= 18 && (
                     <p className="px-1 text-[var(--text-dim)] truncate leading-tight pt-px" style={{ fontSize: '10px' }}>
@@ -282,8 +283,8 @@ function WeekCalendar({
                 <div
                   key={i}
                   title={b.title}
-                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--accent)]/10 border border-dashed border-[var(--accent)]/70"
-                  style={{ top: p.top, height: p.height }}
+                  className="absolute left-0.5 right-0.5 overflow-hidden bg-[var(--accent)]/10 border border-dashed border-[var(--accent)]/70"
+                  style={{ top: p.top, height: p.height, borderRadius: 1 }}
                 >
                   {p.height >= 18 && (
                     <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px" style={{ fontSize: '10px' }}>
@@ -301,8 +302,8 @@ function WeekCalendar({
                 <div
                   key={i}
                   title={b.title}
-                  className="absolute left-0.5 right-0.5 rounded overflow-hidden bg-[var(--accent)]/20 border border-[var(--accent)] group"
-                  style={{ top: p.top, height: p.height }}
+                  className="absolute left-0.5 right-0.5 overflow-hidden bg-[var(--accent)]/20 border border-[var(--accent)] group"
+                  style={{ top: p.top, height: p.height, borderRadius: 1 }}
                 >
                   {p.height >= 18 && (
                     <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px pr-3" style={{ fontSize: '10px' }}>
@@ -313,7 +314,7 @@ function WeekCalendar({
                     <button
                       onClick={(e) => { e.stopPropagation(); onDeleteBlock(b.id); }}
                       disabled={isDeleting}
-                      className="absolute top-0.5 right-0.5 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 rounded bg-[var(--danger)] text-white disabled:opacity-50"
+                      className="absolute top-0.5 right-0.5 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 bg-[var(--danger)] text-white disabled:opacity-50"
                       title="Delete block"
                     >
                       {isDeleting ? <Loader2 size={7} className="animate-spin" /> : <X size={7} />}
