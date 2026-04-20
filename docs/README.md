@@ -164,8 +164,3 @@ Tables: `canvas_tokens`, `courses` (incl. `hidden boolean`), `assignments`, `ass
 | POST | `/api/google-calendar/confirm-plan` | JWT | Push blocks to GCal + store in DB |
 | GET | `/api/google-calendar/study-blocks` | JWT | List saved study blocks |
 | DELETE | `/api/google-calendar/study-blocks/{id}` | JWT | Delete block + remove from GCal |
-
-## What's Not Built Yet
-
-- Gemini syllabus parser (service + `/api/syllabus` routes)
-- Daily digest / AI-generated summary

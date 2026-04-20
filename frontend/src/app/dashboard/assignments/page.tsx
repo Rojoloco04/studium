@@ -7,14 +7,7 @@ import {
   useToggleSubmitted,
 } from '@/lib/queries';
 import type { Assignment } from '@/lib/types';
-import {
-  ClipboardList,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  ArrowRight,
-  ChevronDown,
-} from 'lucide-react';
+import { ArrowRight, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import clsx from 'clsx';
 
@@ -23,67 +16,164 @@ type FilterTab = 'all' | 'upcoming' | 'past_due' | 'finished';
 const TABS: { id: FilterTab; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'upcoming', label: 'Upcoming' },
-  { id: 'past_due', label: 'Past Due' },
+  { id: 'past_due', label: 'Past due' },
   { id: 'finished', label: 'Finished' },
 ];
 
-// Finished = manually marked OR Canvas recorded a non-zero grade.
-// score=0 is treated as a genuine miss, not finished.
 function isFinished(a: Assignment): boolean {
   return a.submitted || (a.score != null && a.score > 0);
 }
 
-
-function formatDue(
-  dueAt: string | null,
-  finished = false
-): { text: string; color: string } {
-  if (!dueAt) return { text: 'No due date', color: 'var(--text-faint)' };
-
+function getDateLabel(dueAt: string | null, finished: boolean): {
+  label: string;
+  state: 'overdue' | 'today' | 'done' | 'normal';
+} {
+  if (!dueAt) return { label: 'No date', state: 'normal' };
   const now = new Date();
   const due = new Date(dueAt);
-
-  // Compare calendar days in local timezone to avoid UTC off-by-one.
   const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-  const diffDays = Math.round(
-    (dueDay.getTime() - nowDay.getTime()) / (1000 * 60 * 60 * 24)
+  const diff = Math.round((dueDay.getTime() - nowDay.getTime()) / 86400000);
+  const label = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (finished) return { label, state: 'done' };
+  if (diff < 0) return { label, state: 'overdue' };
+  if (diff === 0) return { label: 'Today', state: 'today' };
+  if (diff === 1) return { label: 'Tomorrow', state: 'normal' };
+  return { label, state: 'normal' };
+}
+
+// ─── Tick Button ──────────────────────────────────────────────────────────────
+
+function TickButton({ done, onClick }: { done: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={done ? 'Unmark' : 'Mark done'}
+      className="flex-shrink-0 flex items-center justify-center rounded-full transition-colors"
+      style={{
+        width: 16,
+        height: 16,
+        border: done ? '1px solid var(--success)' : '1px solid var(--border)',
+        background: done ? 'var(--success)' : 'transparent',
+        cursor: 'pointer',
+      }}
+    >
+      {done && (
+        <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
+          <path d="M1 2.5L2.8 4.2L6 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
   );
-
-  const dateLabel = due.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-
-  if (diffDays < 0) {
-    if (finished) return { text: dateLabel, color: 'var(--text-faint)' };
-    const n = Math.abs(diffDays);
-    return { text: `${n}d overdue`, color: 'var(--danger)' };
-  }
-  if (diffDays === 0)
-    return {
-      text: 'Due today',
-      color: finished ? 'var(--text-faint)' : 'var(--warning)',
-    };
-  if (diffDays === 1)
-    return {
-      text: 'Tomorrow',
-      color: finished ? 'var(--text-faint)' : 'var(--warning)',
-    };
-  if (diffDays <= 7)
-    return { text: `In ${diffDays} days`, color: 'var(--text-dim)' };
-  return { text: dateLabel, color: 'var(--text-faint)' };
 }
 
-function scorePct(score: number, points: number): string {
-  return `${Math.round((score / points) * 100)}%`;
+// ─── Assignment Row ────────────────────────────────────────────────────────────
+
+function AssignmentRow({
+  a,
+  onToggle,
+}: {
+  a: Assignment;
+  onToggle: () => void;
+}) {
+  const finished = isFinished(a);
+  const canUnmark = a.submitted && a.score == null;
+  const canToggle = !finished || canUnmark;
+  const { label, state } = getDateLabel(a.due_at, finished);
+
+  const dateColor =
+    state === 'overdue' ? 'var(--danger)' :
+    state === 'today' ? 'var(--accent)' :
+    state === 'done' ? 'var(--text-faint2)' :
+    'var(--text-faint)';
+
+  return (
+    <div
+      className="group grid items-baseline py-[18px]"
+      style={{
+        gridTemplateColumns: '88px 1fr 180px 120px 28px',
+        gap: 24,
+        borderBottom: '1px solid var(--border-soft)',
+      }}
+    >
+      {/* Date */}
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          letterSpacing: '0.04em',
+          color: dateColor,
+          textDecoration: state === 'done' ? 'line-through' : 'none',
+        }}
+      >
+        {label}
+      </span>
+
+      {/* Title */}
+      <div
+        className="text-sm leading-snug min-w-0"
+        style={{
+          color: finished ? 'var(--text-faint)' : 'var(--text)',
+          textDecoration: finished ? 'line-through' : 'none',
+          textDecorationColor: 'var(--text-faint2)',
+          textDecorationThickness: '1px',
+        }}
+      >
+        {a.name}
+      </div>
+
+      {/* Course */}
+      <span
+        className="truncate"
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          color: 'var(--text-faint)',
+          letterSpacing: '0.02em',
+        }}
+      >
+        {a.courses?.course_code ?? a.courses?.name ?? ''}
+      </span>
+
+      {/* Points */}
+      <span
+        className="text-right"
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          color: 'var(--text-faint)',
+        }}
+      >
+        {a.points_possible != null ? (
+          a.score != null ? (
+            <>
+              <span style={{ color: 'var(--text)' }}>{a.score}</span>
+              {' / '}{a.points_possible} pts
+            </>
+          ) : (
+            `${a.points_possible} pts`
+          )
+        ) : null}
+      </span>
+
+      {/* Tick */}
+      <div className="flex items-center justify-end">
+        {canToggle && (
+          <TickButton
+            done={finished}
+            onClick={onToggle}
+          />
+        )}
+      </div>
+    </div>
+  );
 }
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AssignmentsPage() {
-  const { data: canvasConnected, isLoading: checkingCanvas } =
-    useCanvasConnected();
-  const { data: assignments = [], isLoading: loadingAssignments } =
-    useAssignments();
+  const { data: canvasConnected, isLoading: checkingCanvas } = useCanvasConnected();
+  const { data: assignments = [], isLoading: loadingAssignments } = useAssignments();
   const toggleSubmitted = useToggleSubmitted();
 
   const [filter, setFilter] = useState<FilterTab>('upcoming');
@@ -108,12 +198,8 @@ export default function AssignmentsPage() {
     const now = new Date();
     return {
       all: assignments.length,
-      upcoming: assignments.filter(
-        (a) => !isFinished(a) && (!a.due_at || new Date(a.due_at) >= now)
-      ).length,
-      past_due: assignments.filter(
-        (a) => !isFinished(a) && !!a.due_at && new Date(a.due_at) < now
-      ).length,
+      upcoming: assignments.filter((a) => !isFinished(a) && (!a.due_at || new Date(a.due_at) >= now)).length,
+      past_due: assignments.filter((a) => !isFinished(a) && !!a.due_at && new Date(a.due_at) < now).length,
       finished: assignments.filter(isFinished).length,
     };
   }, [assignments]);
@@ -124,21 +210,13 @@ export default function AssignmentsPage() {
       courseFilter === 'all'
         ? assignments
         : assignments.filter((a) => a.course_id === courseFilter);
-
     switch (filter) {
       case 'upcoming':
-        return list.filter(
-          (a) => !isFinished(a) && (!a.due_at || new Date(a.due_at) >= now)
-        );
+        return list.filter((a) => !isFinished(a) && (!a.due_at || new Date(a.due_at) >= now));
       case 'past_due':
         return list
-          .filter(
-            (a) => !isFinished(a) && !!a.due_at && new Date(a.due_at) < now
-          )
-          .sort(
-            (a, b) =>
-              new Date(b.due_at!).getTime() - new Date(a.due_at!).getTime()
-          );
+          .filter((a) => !isFinished(a) && !!a.due_at && new Date(a.due_at) < now)
+          .sort((a, b) => new Date(b.due_at!).getTime() - new Date(a.due_at!).getTime());
       case 'finished':
         return list.filter(isFinished);
       default:
@@ -146,33 +224,54 @@ export default function AssignmentsPage() {
     }
   }, [assignments, filter, courseFilter]);
 
-  // Canvas not connected
+  // Not connected
   if (!loading && !canvasConnected) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="px-10 py-14 max-w-[1080px]">
         <div className="mb-8">
-          <h1 className="font-display font-700 text-2xl">Assignments</h1>
-          <p className="text-[var(--text-dim)] text-sm mt-1">
-            All assignments across your courses
-          </p>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--text-faint)',
+              marginBottom: 12,
+            }}
+          >
+            Assignments
+          </div>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 52,
+              lineHeight: 1,
+              letterSpacing: '-0.02em',
+              fontWeight: 400,
+            }}
+          >
+            All the <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>work</em>,
+            <br />
+            in one ledger.
+          </h1>
         </div>
-        <div className="surface-border rounded-xl p-12 text-center">
-          <ClipboardList
-            size={32}
-            className="text-[var(--text-faint)] mx-auto mb-4"
-          />
-          <h3 className="font-display font-600 text-base text-[var(--text)] mb-2">
+        <div
+          className="py-16 text-center rounded"
+          style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}
+        >
+          <GraduationCap size={28} className="mx-auto mb-4" style={{ color: 'var(--text-faint)' }} />
+          <h3 className="mb-2" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400 }}>
             No assignments yet
           </h3>
-          <p className="text-[var(--text-dim)] text-sm max-w-xs mx-auto mb-5">
+          <p className="text-sm mb-5 max-w-xs mx-auto" style={{ color: 'var(--text-faint)' }}>
             Connect Canvas to import your assignments automatically.
           </p>
           <Link
             href="/dashboard/canvas"
-            className="inline-flex items-center gap-2 bg-[var(--accent)] text-white text-sm px-5 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-medium"
+            className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)', color: 'var(--background)', fontWeight: 500 }}
           >
-            Connect Canvas
-            <ArrowRight size={14} />
+            Connect Canvas <ArrowRight size={13} />
           </Link>
         </div>
       </div>
@@ -180,95 +279,165 @@ export default function AssignmentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="font-display font-700 text-2xl">Assignments</h1>
-        <p className="text-[var(--text-dim)] text-sm mt-1">
-          {loading
-            ? 'Loading…'
-            : `${assignments.length} assignment${assignments.length !== 1 ? 's' : ''} across ${courses.length} course${courses.length !== 1 ? 's' : ''}`}
-        </p>
+    <div className="px-10 py-14 max-w-[1080px]">
+
+      {/* Page header */}
+      <div className="flex items-end justify-between mb-8">
+        <div>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--text-faint)',
+              marginBottom: 12,
+            }}
+          >
+            Assignments
+          </div>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 52,
+              lineHeight: 1,
+              letterSpacing: '-0.02em',
+              fontWeight: 400,
+            }}
+          >
+            All the <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>work</em>,
+            <br />
+            in one ledger.
+          </h1>
+          <p className="mt-3" style={{ fontSize: 13, color: 'var(--text-faint)' }}>
+            {loading
+              ? 'Loading…'
+              : `${assignments.length} item${assignments.length !== 1 ? 's' : ''} across ${courses.length} course${courses.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        {!loading && (
+          <div
+            className="text-right flex-shrink-0 ml-10"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.7 }}
+          >
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 22,
+                color: 'var(--text)',
+                letterSpacing: 0,
+                marginBottom: 4,
+              }}
+            >
+              {counts.finished}
+              <span style={{ fontSize: 14, color: 'var(--text-faint)' }}>/{counts.all}</span>
+            </div>
+            <div>Finished this term</div>
+            <div>{counts.all > 0 ? Math.round((counts.finished / counts.all) * 100) : 0}% complete</div>
+          </div>
+        )}
       </div>
 
       {/* Filter bar */}
-      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-        <div className="flex items-center gap-0.5 bg-[var(--surface)] border border-[var(--border)] p-1 rounded-lg">
+      <div className="flex items-baseline justify-between mb-6">
+        {/* Tabs */}
+        <div className="flex" style={{ gap: 28, borderBottom: '1px solid var(--border)' }}>
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                filter === tab.id
-                  ? 'bg-[var(--surface-2)] text-[var(--text)]'
-                  : 'text-[var(--text-dim)] hover:text-[var(--text)]'
-              )}
+              className="relative pb-2 transition-colors cursor-pointer"
+              style={{
+                background: 'none',
+                border: 'none',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                color: filter === tab.id ? 'var(--text)' : 'var(--text-faint)',
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 8,
+              }}
             >
               {tab.label}
               {!loading && (
                 <span
-                  className={clsx(
-                    'text-xs font-mono',
-                    filter === tab.id
-                      ? 'text-[var(--accent)]'
-                      : 'text-[var(--text-faint)]'
-                  )}
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10.5,
+                    color: filter === tab.id ? 'var(--accent)' : 'var(--text-faint2)',
+                  }}
                 >
                   {counts[tab.id]}
                 </span>
+              )}
+              {filter === tab.id && (
+                <span
+                  className="absolute bottom-0 left-0 right-0"
+                  style={{ height: 2, background: 'var(--text)' }}
+                />
               )}
             </button>
           ))}
         </div>
 
+        {/* Course filter */}
         {courses.length > 1 && (
-          <div className="relative">
-            <select
-              value={courseFilter}
-              onChange={(e) => setCourseFilter(e.target.value)}
-              className="appearance-none bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] text-sm pl-3 pr-8 py-1.5 rounded-lg cursor-pointer focus:outline-none focus:border-[var(--accent)] transition-colors"
-            >
-              <option value="all">All courses</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.course_code}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={13}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)] pointer-events-none"
-            />
-          </div>
+          <select
+            value={courseFilter}
+            onChange={(e) => setCourseFilter(e.target.value)}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              background: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid var(--border)',
+              color: 'var(--text-dim)',
+              padding: '6px 20px 6px 0',
+              cursor: 'pointer',
+              appearance: 'none',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              backgroundImage: `linear-gradient(45deg, transparent 50%, var(--text-faint) 50%), linear-gradient(-45deg, transparent 50%, var(--text-faint) 50%)`,
+              backgroundPosition: 'right 4px top 50%, right 0 top 50%',
+              backgroundSize: '4px 4px',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            <option value="all">All courses</option>
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>{c.course_code}</option>
+            ))}
+          </select>
         )}
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="surface-border rounded-xl overflow-hidden divide-y divide-[var(--border)]">
+        <div style={{ borderTop: '1px solid var(--border)' }}>
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="px-5 py-3.5 flex items-center gap-4 animate-pulse"
+              className="grid py-[18px] animate-pulse"
+              style={{
+                gridTemplateColumns: '88px 1fr 180px 120px 28px',
+                gap: 24,
+                borderBottom: '1px solid var(--border-soft)',
+              }}
             >
-              <div className="w-4 h-4 rounded-full bg-[var(--surface-2)] flex-shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 bg-[var(--surface-2)] rounded w-2/5" />
-                <div className="h-2.5 bg-[var(--surface-2)] rounded w-1/4" />
-              </div>
-              <div className="h-3 bg-[var(--surface-2)] rounded w-20 hidden sm:block" />
-              <div className="h-3 bg-[var(--surface-2)] rounded w-16" />
+              <div className="h-3 rounded" style={{ background: 'var(--surface-2)', width: 60 }} />
+              <div className="h-3 rounded" style={{ background: 'var(--surface-2)', width: '55%' }} />
+              <div className="h-3 rounded" style={{ background: 'var(--surface-2)', width: 90 }} />
+              <div className="h-3 rounded" style={{ background: 'var(--surface-2)', width: 70 }} />
+              <div />
             </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="surface-border rounded-xl p-10 text-center">
-          <ClipboardList
-            size={28}
-            className="text-[var(--text-faint)] mx-auto mb-3"
-          />
-          <p className="text-[var(--text-dim)] text-sm">
+        <div
+          className="py-16 text-center rounded mt-2"
+          style={{ border: '1px solid var(--border-soft)' }}
+        >
+          <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
             {filter === 'upcoming' && 'No upcoming assignments — nice!'}
             {filter === 'past_due' && 'No past due assignments.'}
             {filter === 'finished' && 'No finished assignments yet.'}
@@ -276,126 +445,32 @@ export default function AssignmentsPage() {
           </p>
         </div>
       ) : (
-        <div className="surface-border rounded-xl overflow-hidden">
-          <div className="divide-y divide-[var(--border)]">
-            {filtered.map((a: Assignment) => {
-              const now = new Date();
-              const past = !!a.due_at && new Date(a.due_at) < now;
-              const finished = isFinished(a);
-              // Manually marked = submitted flag set by the user, no Canvas grade yet.
-              const canUnmark = a.submitted && a.score == null;
-              // Can toggle if: not finished (show "Mark done") OR manually marked (show "Unmark").
-              const canToggle = !finished || canUnmark;
-              const { text: dueText, color: dueColor } = formatDue(
-                a.due_at,
-                finished
-              );
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          {filtered.map((a: Assignment) => (
+            <AssignmentRow
+              key={a.id}
+              a={a}
+              onToggle={() => toggleSubmitted.mutate({ id: a.id, submitted: !a.submitted })}
+            />
+          ))}
+        </div>
+      )}
 
-              return (
-                <div
-                  key={a.id}
-                  className="group flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--surface-2)] transition-colors"
-                >
-                  {/* Status icon */}
-                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                    {finished ? (
-                      <CheckCircle2
-                        size={15}
-                        style={{ color: 'var(--success)' }}
-                      />
-                    ) : past ? (
-                      <AlertCircle
-                        size={15}
-                        style={{ color: 'var(--danger)' }}
-                      />
-                    ) : (
-                      <Clock size={15} style={{ color: 'var(--text-faint)' }} />
-                    )}
-                  </div>
-
-                  {/* Name + course */}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={clsx(
-                        'text-sm font-medium truncate',
-                        finished ? 'text-[var(--text-dim)]' : 'text-[var(--text)]'
-                      )}
-                    >
-                      {a.name}
-                    </p>
-                    {a.courses && (
-                      <p className="text-xs text-[var(--text-faint)] mt-0.5 truncate">
-                        {a.courses.name}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Score */}
-                  <div className="text-right flex-shrink-0 hidden sm:block min-w-[120px]">
-                    {a.points_possible != null && (
-                      <span className="text-xs font-mono">
-                        {a.score != null ? (
-                          <>
-                            <span
-                              style={{
-                                color:
-                                  a.score / a.points_possible >= 0.7
-                                    ? 'var(--text)'
-                                    : 'var(--danger)',
-                              }}
-                            >
-                              {a.score}
-                            </span>
-                            <span style={{ color: 'var(--text-faint)' }}>
-                              {' '}/ {a.points_possible} pts
-                            </span>
-                            <span
-                              style={{ color: 'var(--text-faint)' }}
-                              className="ml-1"
-                            >
-                              ({scorePct(a.score, a.points_possible)})
-                            </span>
-                          </>
-                        ) : (
-                          <span style={{ color: 'var(--text-faint)' }}>
-                            — / {a.points_possible} pts
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Due date — swaps to action button on row hover */}
-                  <div className="flex-shrink-0 w-24 flex items-center justify-end">
-                    {/* Date: shown by default, hidden on hover when an action exists */}
-                    <span
-                      className={clsx(
-                        'text-xs font-mono',
-                        canToggle ? 'flex group-hover:hidden' : 'flex'
-                      )}
-                      style={{ color: dueColor }}
-                    >
-                      {dueText}
-                    </span>
-                    {/* Action button: only mounted when hoverable, hidden until hover */}
-                    {canToggle && (
-                      <button
-                        onClick={() =>
-                          toggleSubmitted.mutate({
-                            id: a.id,
-                            submitted: !a.submitted,
-                          })
-                        }
-                        className="hidden group-hover:flex text-xs font-medium text-[var(--text-faint)] hover:text-[var(--accent)] transition-colors"
-                      >
-                        {canUnmark ? 'Unmark' : 'Mark done'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Footer */}
+      {!loading && (
+        <div
+          className="flex justify-between mt-14 pt-5"
+          style={{
+            borderTop: '1px solid var(--border)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10.5,
+            color: 'var(--text-faint2)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          <span>Showing {filtered.length} of {assignments.length}</span>
+          <span>Sorted by due date</span>
         </div>
       )}
     </div>

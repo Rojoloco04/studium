@@ -9,18 +9,13 @@ import { useTheme } from '@/lib/theme';
 import { useAllCourses, useToggleHideCourse, QK } from '@/lib/queries';
 import { useSyncCanvas } from '@/lib/sync-provider';
 import {
-  GraduationCap,
   ExternalLink,
   Loader2,
   AlertCircle,
   Link2Off,
-  Moon,
-  Sun,
   Shield,
   RefreshCw,
-  EyeOff,
   Eye,
-  CalendarDays,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────
@@ -47,6 +42,19 @@ async function getAuthHeaders() {
 }
 
 const API = process.env.NEXT_PUBLIC_API_URL;
+
+// ── Shared section wrapper ───────────────────────────────────
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 20 }}>
+        {label}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 // ── Canvas section ───────────────────────────────────────────
 
@@ -123,8 +131,8 @@ function CanvasSection() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-[var(--text-faint)] text-sm py-4">
-        <Loader2 size={14} className="animate-spin" />
+      <div className="flex items-center gap-2" style={{ color: 'var(--text-faint)', fontSize: 13 }}>
+        <Loader2 size={13} className="animate-spin" />
         Loading…
       </div>
     );
@@ -140,88 +148,90 @@ function CanvasSection() {
       : null;
 
     return (
-      <div className="space-y-4">
-        {/* Connected state */}
-        <div className="surface-border rounded-xl p-5 space-y-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[var(--success)]" />
-              <span className="text-sm font-medium text-[var(--text)]">Connected</span>
-            </div>
-            {displayName && (
-              <p className="text-sm text-[var(--text-dim)]">{displayName}</p>
-            )}
-            {displayDomain && (
-              <p className="text-xs font-mono text-[var(--text-faint)] break-all">{displayDomain}</p>
-            )}
+      <div className="space-y-5">
+        {/* Status row */}
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</span>
+            <span className="flex items-center gap-2" style={{ fontSize: 13, color: 'var(--text)' }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ background: 'var(--success)', flexShrink: 0 }} />
+              Connected
+            </span>
           </div>
-
-          {(status?.courses_count !== undefined) && (
-            <div className="flex gap-4 pt-1 border-t border-[var(--border)]">
-              <div>
-                <p className="text-xs text-[var(--text-faint)]">Courses</p>
-                <p className="text-sm font-medium text-[var(--text)]">{status.courses_count}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-faint)]">Assignments</p>
-                <p className="text-sm font-medium text-[var(--text)]">{status.assignments_count}</p>
-              </div>
-              {lastSynced && (
-                <div>
-                  <p className="text-xs text-[var(--text-faint)]">Last synced</p>
-                  <p className="text-xs text-[var(--text-dim)]">{lastSynced}</p>
-                </div>
-              )}
+          {displayName && (
+            <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account</span>
+              <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{displayName}</span>
+            </div>
+          )}
+          {displayDomain && (
+            <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', wordBreak: 'break-all' }}>{displayDomain}</span>
+            </div>
+          )}
+          {status?.courses_count !== undefined && (
+            <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Data</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>{status.courses_count} courses · {status.assignments_count} assignments</span>
+            </div>
+          )}
+          {lastSynced && (
+            <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Last synced</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)' }}>{lastSynced}</span>
             </div>
           )}
         </div>
 
-        {/* Sync / Disconnect */}
         {error && (
-          <div className="flex items-center gap-2 text-[var(--danger)] text-xs">
-            <AlertCircle size={13} />
+          <div className="flex items-center gap-2" style={{ color: 'var(--danger)', fontSize: 12 }}>
+            <AlertCircle size={12} />
             {error}
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-5">
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
             {syncing ? 'Syncing…' : 'Sync now'}
           </button>
-
-          <span className="text-[var(--border-strong)] select-none">·</span>
-
+          <span style={{ color: 'var(--border-strong)' }}>·</span>
           <button
             onClick={() => setConfirmDisconnect(true)}
-            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors"
+            className="flex items-center gap-1.5 transition-colors"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-dim)')}
           >
-            <Link2Off size={14} />
-            Disconnect Canvas
+            <Link2Off size={12} />
+            Disconnect
           </button>
         </div>
 
         {confirmDisconnect && (
-          <div className="surface-border rounded-xl p-4 space-y-3">
-            <p className="text-sm text-[var(--text)]">
+          <div className="p-4 space-y-3" style={{ border: '1px solid var(--border)', borderRadius: 2 }}>
+            <p style={{ fontSize: 13, color: 'var(--text)' }}>
               This will remove your Canvas token and all synced data. Are you sure?
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleDisconnect}
                 disabled={disconnecting}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--danger)] text-white text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="flex items-center gap-2 disabled:opacity-50 transition-opacity"
+                style={{ background: 'var(--danger)', color: 'white', fontSize: 12, padding: '6px 14px', borderRadius: 2, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
               >
-                {disconnecting && <Loader2 size={13} className="animate-spin" />}
+                {disconnecting && <Loader2 size={12} className="animate-spin" />}
                 Yes, disconnect
               </button>
               <button
                 onClick={() => setConfirmDisconnect(false)}
-                className="px-3 py-1.5 rounded-lg surface-border text-sm text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
+                style={{ background: 'none', border: '1px solid var(--border)', fontSize: 12, padding: '6px 14px', borderRadius: 2, cursor: 'pointer', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}
               >
                 Cancel
               </button>
@@ -234,77 +244,83 @@ function CanvasSection() {
 
   // Not connected — show connect form
   return (
-    <div className="space-y-4">
-      <div className="surface-border rounded-xl p-5">
-        <h3 className="font-display font-600 text-sm mb-3">How to get your token</h3>
-        <ol className="space-y-2 text-sm text-[var(--text-dim)]">
-          <li className="flex gap-2">
-            <span className="font-mono text-[var(--accent)] flex-shrink-0">1.</span>
-            <span>Open Canvas → <strong className="text-[var(--text)]">Account → Settings</strong></span>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-mono text-[var(--accent)] flex-shrink-0">2.</span>
-            <span>Scroll to <strong className="text-[var(--text)]">Approved Integrations</strong> → <strong className="text-[var(--text)]">+ New Access Token</strong></span>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-mono text-[var(--accent)] flex-shrink-0">3.</span>
-            <span>Name it <strong className="text-[var(--text)]">Studium</strong>, set an expiry, copy the token</span>
-          </li>
-        </ol>
-        <a
-          href="https://community.canvaslms.com/t5/Student-Guide/How-do-I-manage-API-access-tokens-as-a-student/ta-p/273"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[var(--accent)] text-xs mt-4 hover:underline"
-        >
-          Canvas help docs <ExternalLink size={11} />
-        </a>
+    <div className="space-y-5">
+      {/* Instructions */}
+      <div style={{ borderTop: '1px solid var(--border)' }}>
+        {[
+          ['1.', <>Open Canvas → <strong style={{ color: 'var(--text)' }}>Account → Settings</strong></>],
+          ['2.', <>Scroll to <strong style={{ color: 'var(--text)' }}>Approved Integrations</strong> → <strong style={{ color: 'var(--text)' }}>+ New Access Token</strong></>],
+          ['3.', <>Name it <strong style={{ color: 'var(--text)' }}>Studium</strong>, set an expiry, copy the token</>],
+        ].map(([num, text], i) => (
+          <div key={i} className="grid py-3.5" style={{ gridTemplateColumns: '28px 1fr', gap: 12, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>{num}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>{text as React.ReactNode}</span>
+          </div>
+        ))}
       </div>
+      <a
+        href="https://community.canvaslms.com/t5/Student-Guide/How-do-I-manage-API-access-tokens-as-a-student/ta-p/273"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
+        style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)', textDecoration: 'none' }}
+      >
+        Canvas help docs <ExternalLink size={11} />
+      </a>
 
-      <form onSubmit={handleConnect} className="space-y-3">
+      <form onSubmit={handleConnect} className="space-y-3 pt-2">
         <div>
-          <label className="block text-xs font-mono text-[var(--text-dim)] mb-1.5">Canvas domain</label>
+          <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Canvas domain
+          </label>
           <input
             type="url"
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
             required
             placeholder="https://youruniversity.instructure.com"
-            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+            style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', padding: '8px 0', fontSize: 13, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-sans)', boxSizing: 'border-box' }}
+            onFocus={e => (e.currentTarget.style.borderBottomColor = 'var(--accent)')}
+            onBlur={e => (e.currentTarget.style.borderBottomColor = 'var(--border)')}
           />
         </div>
         <div>
-          <label className="block text-xs font-mono text-[var(--text-dim)] mb-1.5">Access token</label>
+          <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Access token
+          </label>
           <input
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
             required
             placeholder="Paste your Canvas access token"
-            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--accent)] transition-colors font-mono"
+            style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', padding: '8px 0', fontSize: 13, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+            onFocus={e => (e.currentTarget.style.borderBottomColor = 'var(--accent)')}
+            onBlur={e => (e.currentTarget.style.borderBottomColor = 'var(--border)')}
           />
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-[var(--danger)] text-xs">
-            <AlertCircle size={13} />
+          <div className="flex items-center gap-2" style={{ color: 'var(--danger)', fontSize: 12 }}>
+            <AlertCircle size={12} />
             {error}
           </div>
         )}
 
-        <div className="flex items-center gap-2 bg-[var(--surface-2)] rounded-lg px-3 py-2.5">
-          <Shield size={13} className="text-[var(--text-faint)]" />
-          <p className="text-xs text-[var(--text-faint)]">
-            Your token is encrypted at rest. You can revoke it from Canvas at any time.
+        <div className="flex items-start gap-2 py-2">
+          <Shield size={12} style={{ color: 'var(--text-faint)', marginTop: 1, flexShrink: 0 }} />
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5 }}>
+            Your token is encrypted at rest. Revoke it from Canvas at any time.
           </p>
         </div>
 
         <button
           type="submit"
           disabled={connecting}
-          className="w-full bg-[var(--accent)] text-white py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+          className="flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
+          style={{ background: 'var(--text)', color: 'var(--background)', fontSize: 12, fontFamily: 'var(--font-mono)', padding: '10px 20px', borderRadius: 2, border: 'none', cursor: 'pointer', letterSpacing: '0.05em', width: '100%' }}
         >
-          {connecting && <Loader2 size={14} className="animate-spin" />}
+          {connecting && <Loader2 size={13} className="animate-spin" />}
           Connect Canvas
         </button>
       </form>
@@ -382,8 +398,8 @@ function GoogleCalendarSection() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-[var(--text-faint)] text-sm py-4">
-        <Loader2 size={14} className="animate-spin" />
+      <div className="flex items-center gap-2" style={{ color: 'var(--text-faint)', fontSize: 13 }}>
+        <Loader2 size={13} className="animate-spin" />
         Loading…
       </div>
     );
@@ -391,62 +407,71 @@ function GoogleCalendarSection() {
 
   if (status?.connected) {
     return (
-      <div className="space-y-4">
-        <div className="surface-border rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[var(--success)]" />
-            <span className="text-sm font-medium text-[var(--text)]">Connected</span>
+      <div className="space-y-5">
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</span>
+            <span className="flex items-center gap-2" style={{ fontSize: 13, color: 'var(--text)' }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ background: 'var(--success)', flexShrink: 0 }} />
+              Connected
+            </span>
           </div>
           {status.google_email && (
-            <p className="text-sm text-[var(--text-dim)]">{status.google_email}</p>
+            <div className="grid py-4" style={{ gridTemplateColumns: '140px 1fr', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'start' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account</span>
+              <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{status.google_email}</span>
+            </div>
           )}
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-[var(--danger)] text-xs">
-            <AlertCircle size={13} />
+          <div className="flex items-center gap-2" style={{ color: 'var(--danger)', fontSize: 12 }}>
+            <AlertCircle size={12} />
             {error}
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-5">
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
             {syncing ? 'Syncing…' : 'Sync calendar'}
           </button>
-
-          <span className="text-[var(--border-strong)] select-none">·</span>
-
+          <span style={{ color: 'var(--border-strong)' }}>·</span>
           <button
             onClick={() => setConfirmDisconnect(true)}
-            className="flex items-center gap-2 text-sm text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors"
+            className="flex items-center gap-1.5 transition-colors"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-dim)')}
           >
-            <Link2Off size={14} />
-            Disconnect Google Calendar
+            <Link2Off size={12} />
+            Disconnect
           </button>
         </div>
 
         {confirmDisconnect && (
-          <div className="surface-border rounded-xl p-4 space-y-3">
-            <p className="text-sm text-[var(--text)]">
+          <div className="p-4 space-y-3" style={{ border: '1px solid var(--border)', borderRadius: 2 }}>
+            <p style={{ fontSize: 13, color: 'var(--text)' }}>
               This will remove your Google Calendar connection. Existing study blocks will remain in your calendar.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleDisconnect}
                 disabled={disconnecting}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--danger)] text-white text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="flex items-center gap-2 disabled:opacity-50 transition-opacity"
+                style={{ background: 'var(--danger)', color: 'white', fontSize: 12, padding: '6px 14px', borderRadius: 2, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
               >
-                {disconnecting && <Loader2 size={13} className="animate-spin" />}
+                {disconnecting && <Loader2 size={12} className="animate-spin" />}
                 Yes, disconnect
               </button>
               <button
                 onClick={() => setConfirmDisconnect(false)}
-                className="px-3 py-1.5 rounded-lg surface-border text-sm text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
+                style={{ background: 'none', border: '1px solid var(--border)', fontSize: 12, padding: '6px 14px', borderRadius: 2, cursor: 'pointer', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}
               >
                 Cancel
               </button>
@@ -459,16 +484,16 @@ function GoogleCalendarSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2 bg-[var(--surface-2)] rounded-lg px-3 py-2.5">
-        <Shield size={13} className="text-[var(--text-faint)] mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-[var(--text-faint)]">
-          Google Calendar integration works best when you sign in with Google. If you signed up with email, you can still connect below.
+      <div className="flex items-start gap-2">
+        <Shield size={12} style={{ color: 'var(--text-faint)', marginTop: 1, flexShrink: 0 }} />
+        <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5 }}>
+          Works best when you sign in with Google. If you signed up with email, you can still connect below.
         </p>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-[var(--danger)] text-xs">
-          <AlertCircle size={13} />
+        <div className="flex items-center gap-2" style={{ color: 'var(--danger)', fontSize: 12 }}>
+          <AlertCircle size={12} />
           {error}
         </div>
       )}
@@ -476,12 +501,13 @@ function GoogleCalendarSection() {
       <button
         onClick={handleConnect}
         disabled={connecting}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="flex items-center gap-2 disabled:opacity-50 transition-opacity"
+        style={{ background: 'var(--text)', color: 'var(--background)', fontSize: 12, fontFamily: 'var(--font-mono)', padding: '10px 20px', borderRadius: 2, border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}
       >
         {connecting
-          ? <><Loader2 size={14} className="animate-spin" /> Connecting…</>
+          ? <><Loader2 size={13} className="animate-spin" /> Connecting…</>
           : <>
-              <svg width="14" height="14" viewBox="0 0 24 24">
+              <svg width="13" height="13" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -495,7 +521,7 @@ function GoogleCalendarSection() {
   );
 }
 
-// ── Dark mode toggle ─────────────────────────────────────────
+// ── Appearance section ───────────────────────────────────────
 
 function AppearanceSection() {
   const { theme, toggle } = useTheme();
@@ -504,12 +530,12 @@ function AppearanceSection() {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-sm font-medium text-[var(--text)]">Dark mode</p>
-        <p className="text-xs text-[var(--text-dim)] mt-0.5">Switch between light and dark appearance</p>
+        <p style={{ fontSize: 13, color: 'var(--text)' }}>Dark mode</p>
+        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>Switch between light and dark appearance</p>
       </div>
       <button
         onClick={toggle}
-        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none"
         style={{ backgroundColor: isDark ? 'var(--accent)' : 'var(--border-strong)' }}
         role="switch"
         aria-checked={isDark}
@@ -517,12 +543,7 @@ function AppearanceSection() {
         <span
           className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white shadow transition-transform"
           style={{ transform: isDark ? 'translateX(24px)' : 'translateX(4px)' }}
-        >
-          {isDark
-            ? <Moon size={9} className="text-[var(--accent)]" />
-            : <Sun size={9} className="text-orange-400" />
-          }
-        </span>
+        />
       </button>
     </div>
   );
@@ -538,8 +559,8 @@ function HiddenCoursesSection() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-[var(--text-faint)] text-sm py-2">
-        <Loader2 size={14} className="animate-spin" />
+      <div className="flex items-center gap-2" style={{ color: 'var(--text-faint)', fontSize: 13 }}>
+        <Loader2 size={13} className="animate-spin" />
         Loading…
       </div>
     );
@@ -547,40 +568,41 @@ function HiddenCoursesSection() {
 
   if (hidden.length === 0) {
     return (
-      <p className="text-sm text-[var(--text-faint)]">No hidden courses.</p>
+      <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>No hidden courses.</p>
     );
   }
 
   return (
-    <div className="surface-border rounded-xl overflow-hidden">
-      <div className="divide-y divide-[var(--border)]">
-        {hidden.map((course) => (
-          <div key={course.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-[var(--text)] truncate">{course.name}</p>
-              <p className="text-xs font-mono text-[var(--text-faint)]">{course.course_code}</p>
-            </div>
-            <button
-              onClick={() => {
-                toggleHide.mutate(
-                  { id: course.id, hidden: false },
-                  { onSuccess: () => toast.success('Course unhidden') }
-                );
-              }}
-              disabled={toggleHide.isPending}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
-            >
-              <Eye size={13} />
-              Unhide
-            </button>
+    <div style={{ borderTop: '1px solid var(--border)' }}>
+      {hidden.map((course) => (
+        <div key={course.id} className="flex items-center justify-between gap-4 py-3.5" style={{ borderBottom: '1px solid var(--border-soft)' }}>
+          <div className="min-w-0">
+            <p style={{ fontSize: 13, color: 'var(--text)' }} className="truncate">{course.name}</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)' }}>{course.course_code}</p>
           </div>
-        ))}
-      </div>
+          <button
+            onClick={() => {
+              toggleHide.mutate(
+                { id: course.id, hidden: false },
+                { onSuccess: () => toast.success('Course unhidden') }
+              );
+            }}
+            disabled={toggleHide.isPending}
+            className="flex-shrink-0 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-faint)')}
+          >
+            <Eye size={12} />
+            Unhide
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────
+// ── GCal callback handler ────────────────────────────────────
 
 function GCalCallbackHandler() {
   const searchParams = useSearchParams();
@@ -603,61 +625,51 @@ function GCalCallbackHandler() {
   return null;
 }
 
+// ── Page ─────────────────────────────────────────────────────
+
 export default function SettingsPage() {
   return (
-    <div className="p-6 max-w-lg mx-auto space-y-8">
+    <div className="px-10 py-14 max-w-[640px]">
       <Suspense>
         <GCalCallbackHandler />
       </Suspense>
-      <div>
-        <h1 className="font-display font-700 text-2xl text-[var(--text)]">Settings</h1>
-        <p className="text-[var(--text-dim)] text-sm mt-1">Manage your integrations and preferences.</p>
+
+      {/* Page header */}
+      <div className="mb-8">
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 12 }}>
+          Settings
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 1, letterSpacing: '-0.02em', fontWeight: 400 }}>
+          Integrations &amp; <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>preferences</em>.
+        </h1>
       </div>
 
-      {/* Canvas */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap size={15} className="text-[var(--text-dim)]" />
-          <h2 className="font-display font-600 text-base text-[var(--text)]">Canvas</h2>
-        </div>
-        <CanvasSection />
-      </section>
+      <div className="space-y-12">
+        <Section label="Canvas">
+          <CanvasSection />
+        </Section>
 
-      <div className="border-t border-[var(--border)]" />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
 
-      {/* Google Calendar */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <CalendarDays size={15} className="text-[var(--text-dim)]" />
-          <h2 className="font-display font-600 text-base text-[var(--text)]">Google Calendar</h2>
-        </div>
-        <GoogleCalendarSection />
-      </section>
+        <Section label="Google Calendar">
+          <GoogleCalendarSection />
+        </Section>
 
-      <div className="border-t border-[var(--border)]" />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
 
-      {/* Appearance */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Sun size={15} className="text-[var(--text-dim)]" />
-          <h2 className="font-display font-600 text-base text-[var(--text)]">Appearance</h2>
-        </div>
-        <AppearanceSection />
-      </section>
+        <Section label="Appearance">
+          <AppearanceSection />
+        </Section>
 
-      <div className="border-t border-[var(--border)]" />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
 
-      {/* Hidden courses */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <EyeOff size={15} className="text-[var(--text-dim)]" />
-          <h2 className="font-display font-600 text-base text-[var(--text)]">Hidden Courses</h2>
-        </div>
-        <p className="text-xs text-[var(--text-dim)]">
-          These courses are hidden from all views. Unhide to restore them.
-        </p>
-        <HiddenCoursesSection />
-      </section>
+        <Section label="Hidden Courses">
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16, lineHeight: 1.5 }}>
+            These courses are hidden from all views. Unhide to restore them.
+          </p>
+          <HiddenCoursesSection />
+        </Section>
+      </div>
     </div>
   );
 }

@@ -6,21 +6,16 @@ import { useCourses, useAssignments, useToggleSubmitted, useToggleHideCourse } f
 import { toast } from 'sonner';
 import type { Assignment } from '@/lib/types';
 import {
-  ChevronLeft,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
   Upload,
   HelpCircle,
   MessageSquare,
   FileText,
   Paperclip,
-  ClipboardList,
-  EyeOff,
   Eye,
+  EyeOff,
+  ArrowLeft,
 } from 'lucide-react';
 import Link from 'next/link';
-import clsx from 'clsx';
 
 type DetailFilter = 'all' | 'upcoming' | 'past_due' | 'submitted';
 
@@ -35,13 +30,11 @@ function isFinished(a: Assignment): boolean {
   return a.submitted || (a.score != null && a.score > 0);
 }
 
-function gradeColor(grade: string | null): string {
-  if (!grade) return 'var(--text-faint)';
-  const g = grade.toUpperCase();
-  if (g.startsWith('A')) return 'var(--success)';
-  if (g.startsWith('B')) return 'var(--accent)';
-  if (g.startsWith('C')) return 'var(--warning)';
-  return 'var(--danger)';
+function gradeColor(score: number | null | undefined): string {
+  if (score == null) return 'var(--text-faint)';
+  if (score < 70) return 'var(--danger)';
+  if (score < 80) return 'var(--warning)';
+  return 'var(--text)';
 }
 
 function scoreBarColor(score: number | null): string {
@@ -61,22 +54,22 @@ function formatDue(dueAt: string | null, finished = false): { text: string; colo
   const diffDays = Math.round((dueDay.getTime() - nowDay.getTime()) / (1000 * 60 * 60 * 24));
   const dateLabel = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   if (diffDays < 0) {
-    if (finished) return { text: dateLabel, color: 'var(--text-faint)' };
+    if (finished) return { text: dateLabel, color: 'var(--text-faint2)' };
     return { text: `${Math.abs(diffDays)}d overdue`, color: 'var(--danger)' };
   }
-  if (diffDays === 0) return { text: 'Due today', color: finished ? 'var(--text-faint)' : 'var(--warning)' };
-  if (diffDays === 1) return { text: 'Tomorrow', color: finished ? 'var(--text-faint)' : 'var(--warning)' };
+  if (diffDays === 0) return { text: 'Due today', color: finished ? 'var(--text-faint2)' : 'var(--accent)' };
+  if (diffDays === 1) return { text: 'Tomorrow', color: finished ? 'var(--text-faint2)' : 'var(--warning)' };
   if (diffDays <= 7) return { text: `In ${diffDays} days`, color: 'var(--text-dim)' };
   return { text: dateLabel, color: 'var(--text-faint)' };
 }
 
 function submissionIcon(types: string[]) {
   const t = types[0];
-  if (t === 'online_upload') return <Upload size={13} />;
-  if (t === 'online_quiz') return <HelpCircle size={13} />;
-  if (t === 'discussion_topic') return <MessageSquare size={13} />;
-  if (t === 'online_text_entry') return <FileText size={13} />;
-  return <Paperclip size={13} />;
+  if (t === 'online_upload') return <Upload size={12} />;
+  if (t === 'online_quiz') return <HelpCircle size={12} />;
+  if (t === 'discussion_topic') return <MessageSquare size={12} />;
+  if (t === 'online_text_entry') return <FileText size={12} />;
+  return <Paperclip size={12} />;
 }
 
 export default function CourseDetailPage() {
@@ -140,249 +133,183 @@ export default function CourseDetailPage() {
   }, [courseAssignments, filter]);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="px-10 py-14 max-w-[1080px]">
       {/* Back nav */}
       <Link
         href="/dashboard/courses"
-        className="inline-flex items-center gap-1 text-sm text-[var(--text-dim)] hover:text-[var(--text)] transition-colors mb-6"
+        className="inline-flex items-center gap-1.5 mb-6 transition-colors hover:text-[var(--accent)]"
+        style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', textDecoration: 'none' }}
       >
-        <ChevronLeft size={14} />
+        <ArrowLeft size={12} />
         Courses
       </Link>
 
       {loading ? (
         <CourseDetailSkeleton />
       ) : !course ? (
-        <div className="surface-border rounded-xl p-12 text-center">
-          <p className="text-[var(--text-dim)] text-sm mb-4">Course not found.</p>
-          <Link
-            href="/dashboard/courses"
-            className="text-sm text-[var(--accent)] hover:underline"
-          >
+        <div className="py-16 text-center" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-faint)', fontSize: 13 }}>
+          <p className="mb-4">Course not found.</p>
+          <Link href="/dashboard/courses" style={{ color: 'var(--accent)', fontSize: 13 }}>
             Back to courses
           </Link>
         </div>
       ) : (
         <>
           {/* Course header */}
-          <div className="surface-border rounded-xl p-6 mb-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <h1 className="font-display font-700 text-2xl text-[var(--text)] leading-tight">
-                  {course.name}
-                </h1>
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <span className="text-xs font-mono bg-[var(--surface-2)] text-[var(--text-dim)] px-2 py-0.5 rounded">
-                    {course.course_code}
-                  </span>
-                  {course.term && (
-                    <span className="text-xs font-mono bg-[var(--surface-2)] text-[var(--text-faint)] px-2 py-0.5 rounded">
-                      {course.term}
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    toggleHide.mutate(
-                      { id: course.id, hidden: !course.hidden },
-                      {
-                        onSuccess: () => {
-                          if (!course.hidden) {
-                            toast.success('Course hidden', { description: 'Manage hidden courses in Settings.' });
-                            router.push('/dashboard/courses');
-                          } else {
-                            toast.success('Course unhidden');
-                          }
-                        },
-                      }
-                    );
-                  }}
-                  className="inline-flex items-center gap-1.5 mt-3 text-xs text-[var(--text-faint)] hover:text-[var(--text-dim)] transition-colors"
-                >
-                  {course.hidden ? <Eye size={12} /> : <EyeOff size={12} />}
-                  {course.hidden ? 'Unhide course' : 'Hide course'}
-                </button>
+          <div className="flex items-start justify-between mb-8">
+            <div className="flex-1 min-w-0">
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 10 }}>
+                {course.course_code}{course.term ? ` · ${course.term}` : ''}
               </div>
-              <div className="text-right flex-shrink-0">
-                <div
-                  className="font-display font-700 text-5xl leading-none"
-                  style={{ color: gradeColor(course.current_grade) }}
-                >
-                  {course.current_grade ?? '—'}
-                </div>
-                <p className="font-mono text-xs text-[var(--text-dim)] mt-1">
-                  {course.current_score != null ? `${course.current_score}%` : 'No score'}
-                </p>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.02em', fontWeight: 400 }}>
+                {course.name}
+              </h1>
+              <button
+                onClick={() => {
+                  toggleHide.mutate(
+                    { id: course.id, hidden: !course.hidden },
+                    {
+                      onSuccess: () => {
+                        if (!course.hidden) {
+                          toast.success('Course hidden', { description: 'Manage hidden courses in Settings.' });
+                          router.push('/dashboard/courses');
+                        } else {
+                          toast.success('Course unhidden');
+                        }
+                      },
+                    }
+                  );
+                }}
+                className="inline-flex items-center gap-1.5 mt-4 transition-colors hover:text-[var(--text-dim)]"
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                {course.hidden ? <Eye size={12} /> : <EyeOff size={12} />}
+                {course.hidden ? 'Unhide course' : 'Hide course'}
+              </button>
+            </div>
+
+            {/* Grade display */}
+            <div className="flex-shrink-0 ml-10 text-right">
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, letterSpacing: '-0.02em', color: gradeColor(course.current_score) }}>
+                {course.current_score != null ? Math.round(course.current_score) : '—'}
+                {course.current_score != null && <span style={{ fontSize: 24, color: 'var(--text-faint)', marginLeft: 2 }}>%</span>}
               </div>
+              {gradeSummary.count > 0 && (
+                <div className="mt-3">
+                  <div className="rounded-full mb-1" style={{ width: 120, height: 3, background: 'var(--surface-2)', marginLeft: 'auto' }}>
+                    <div className="rounded-full" style={{ width: `${Math.min(100, gradeSummary.pct ?? 0)}%`, height: 3, background: scoreBarColor(gradeSummary.pct) }} />
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)' }}>
+                    {gradeSummary.earned.toFixed(1)} / {gradeSummary.possible.toFixed(1)} pts
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Grade summary */}
-          {gradeSummary.count > 0 && (
-            <div className="surface-border rounded-xl p-5 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-[var(--text-dim)]">
-                  Points earned across {gradeSummary.count} graded assignment{gradeSummary.count !== 1 ? 's' : ''}
-                </span>
-                <span className="font-mono text-xs text-[var(--text)]">
-                  {gradeSummary.earned.toFixed(1)} / {gradeSummary.possible.toFixed(1)} pts
-                  {gradeSummary.pct != null && (
-                    <span className="text-[var(--text-faint)] ml-1">
-                      ({Math.round(gradeSummary.pct)}%)
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="w-full bg-[var(--surface-2)] rounded-full h-3">
-                <div
-                  className="h-3 rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(100, gradeSummary.pct ?? 0)}%`,
-                    backgroundColor: scoreBarColor(gradeSummary.pct),
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Filter tabs */}
-          <div className="flex items-center gap-0.5 bg-[var(--surface)] border border-[var(--border)] p-1 rounded-lg w-fit mb-4">
+          <div className="relative flex items-end gap-8 mb-0" style={{ borderBottom: '1px solid var(--border)' }}>
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setFilter(tab.id)}
-                className={clsx(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                  filter === tab.id
-                    ? 'bg-[var(--surface-2)] text-[var(--text)]'
-                    : 'text-[var(--text-dim)] hover:text-[var(--text)]'
-                )}
+                style={{
+                  position: 'relative',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: filter === tab.id ? 'var(--text)' : 'var(--text-faint)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0 0 12px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
               >
                 {tab.label}
-                <span
-                  className={clsx(
-                    'text-xs font-mono',
-                    filter === tab.id ? 'text-[var(--accent)]' : 'text-[var(--text-faint)]'
-                  )}
-                >
+                <span style={{ color: filter === tab.id ? 'var(--accent)' : 'var(--text-faint2)' }}>
                   {counts[tab.id]}
                 </span>
+                {filter === tab.id && (
+                  <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: 'var(--text)', borderRadius: 1 }} />
+                )}
               </button>
             ))}
           </div>
 
           {/* Assignment list */}
           {filtered.length === 0 ? (
-            <div className="surface-border rounded-xl p-10 text-center">
-              <ClipboardList size={28} className="text-[var(--text-faint)] mx-auto mb-3" />
-              <p className="text-[var(--text-dim)] text-sm">
-                {filter === 'upcoming' && 'No upcoming assignments — nice!'}
-                {filter === 'past_due' && 'No past due assignments.'}
-                {filter === 'submitted' && 'No submitted assignments yet.'}
-                {filter === 'all' && 'No assignments for this course.'}
-              </p>
+            <div className="py-14 text-center" style={{ color: 'var(--text-faint)', fontSize: 13 }}>
+              {filter === 'upcoming' && 'No upcoming assignments — nice!'}
+              {filter === 'past_due' && 'No past due assignments.'}
+              {filter === 'submitted' && 'No submitted assignments yet.'}
+              {filter === 'all' && 'No assignments for this course.'}
             </div>
           ) : (
-            <div className="surface-border rounded-xl overflow-hidden">
-              <div className="divide-y divide-[var(--border)]">
-                {filtered.map((a) => {
-                  const now = new Date();
-                  const past = !!a.due_at && new Date(a.due_at) < now;
-                  const finished = isFinished(a);
-                  const canUnmark = a.submitted && a.score == null;
-                  const canToggle = !finished || canUnmark;
-                  const { text: dueText, color: dueColor } = formatDue(a.due_at, finished);
+            <div>
+              {filtered.map((a) => {
+                const finished = isFinished(a);
+                const canUnmark = a.submitted && a.score == null;
+                const canToggle = !finished || canUnmark;
+                const { text: dueText, color: dueColor } = formatDue(a.due_at, finished);
 
-                  return (
-                    <div
-                      key={a.id}
-                      className="group flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--surface-2)] transition-colors"
-                    >
-                      {/* Status icon */}
-                      <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                        {finished ? (
-                          <CheckCircle2 size={15} style={{ color: 'var(--success)' }} />
-                        ) : past ? (
-                          <AlertCircle size={15} style={{ color: 'var(--danger)' }} />
-                        ) : (
-                          <Clock size={15} style={{ color: 'var(--text-faint)' }} />
-                        )}
-                      </div>
+                return (
+                  <div
+                    key={a.id}
+                    className="group grid items-center py-4"
+                    style={{ gridTemplateColumns: '88px 1fr 160px 120px 100px', gap: 24, borderBottom: '1px solid var(--border-soft)' }}
+                  >
+                    {/* Due date */}
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: dueColor, letterSpacing: '0.03em' }}>
+                      {dueText}
+                    </span>
 
-                      {/* Name + due */}
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={clsx(
-                            'text-sm font-medium truncate',
-                            finished ? 'text-[var(--text-dim)]' : 'text-[var(--text)]'
-                          )}
+                    {/* Name */}
+                    <span style={{ fontSize: 14, color: finished ? 'var(--text-faint)' : 'var(--text)', textDecoration: finished ? 'line-through' : 'none', textDecorationColor: 'var(--text-faint2)' }}>
+                      {a.name}
+                    </span>
+
+                    {/* Submission type */}
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      {submissionIcon(a.submission_types)}
+                      {a.submission_types[0]?.replace(/_/g, ' ') ?? ''}
+                    </span>
+
+                    {/* Score */}
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-faint)', textAlign: 'right' }}>
+                      {a.score != null && a.points_possible != null
+                        ? `${a.score} / ${a.points_possible}`
+                        : a.points_possible != null
+                        ? `— / ${a.points_possible}`
+                        : ''}
+                    </span>
+
+                    {/* Mark done */}
+                    <div className="flex justify-end">
+                      {canToggle && (
+                        <button
+                          onClick={() => toggleSubmitted.mutate({ id: a.id, submitted: !a.submitted })}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', background: 'none', border: '1px solid var(--border)', borderRadius: 2, cursor: 'pointer', padding: '3px 8px', letterSpacing: '0.05em' }}
                         >
-                          {a.name}
-                        </p>
-                        <p
-                          className="text-xs mt-0.5 font-mono"
-                          style={{ color: dueColor }}
-                        >
-                          {dueText}
-                        </p>
-                      </div>
-
-                      {/* Submission type */}
-                      <div
-                        className="flex-shrink-0 hidden sm:flex"
-                        style={{ color: 'var(--text-faint)' }}
-                        title={a.submission_types[0] ?? 'none'}
-                      >
-                        {submissionIcon(a.submission_types)}
-                      </div>
-
-                      {/* Score + hover action */}
-                      <div className="text-right flex-shrink-0 hidden sm:block min-w-[120px]">
-                        {a.points_possible != null && (
-                          <span className={clsx('text-xs font-mono', canToggle && 'group-hover:hidden')}>
-                            {a.score != null ? (
-                              <>
-                                <span
-                                  style={{
-                                    color:
-                                      a.score / a.points_possible >= 0.7
-                                        ? 'var(--text)'
-                                        : 'var(--danger)',
-                                  }}
-                                >
-                                  {a.score}
-                                </span>
-                                <span style={{ color: 'var(--text-faint)' }}>
-                                  {' '}/ {a.points_possible} pts
-                                </span>
-                                <span style={{ color: 'var(--text-faint)' }} className="ml-1">
-                                  ({Math.round((a.score / a.points_possible) * 100)}%)
-                                </span>
-                              </>
-                            ) : (
-                              <span style={{ color: 'var(--text-faint)' }}>
-                                — / {a.points_possible} pts
-                              </span>
-                            )}
-                          </span>
-                        )}
-                        {canToggle && (
-                          <button
-                            onClick={() =>
-                              toggleSubmitted.mutate({ id: a.id, submitted: !a.submitted })
-                            }
-                            className="hidden group-hover:inline text-xs font-medium text-[var(--text-faint)] hover:text-[var(--accent)] transition-colors"
-                          >
-                            {canUnmark ? 'Unmark' : 'Mark done'}
-                          </button>
-                        )}
-                      </div>
+                          {canUnmark ? 'Unmark' : 'Mark done'}
+                        </button>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           )}
+
+          {/* Footer */}
+          <div className="flex justify-between mt-10 pt-5" style={{ borderTop: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint2)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <span>{filtered.length} assignment{filtered.length !== 1 ? 's' : ''}</span>
+            <span>{counts.submitted} submitted · {counts.upcoming} upcoming</span>
+          </div>
         </>
       )}
     </div>
@@ -392,31 +319,26 @@ export default function CourseDetailPage() {
 function CourseDetailSkeleton() {
   return (
     <>
-      <div className="surface-border rounded-xl p-6 mb-4 animate-pulse">
-        <div className="flex justify-between gap-4">
-          <div className="flex-1 space-y-2">
-            <div className="h-7 bg-[var(--surface-2)] rounded w-1/2" />
-            <div className="flex gap-2 mt-2">
-              <div className="h-5 w-16 bg-[var(--surface-2)] rounded" />
-              <div className="h-5 w-12 bg-[var(--surface-2)] rounded" />
-            </div>
-          </div>
-          <div className="h-14 w-16 bg-[var(--surface-2)] rounded flex-shrink-0" />
+      <div className="flex items-start justify-between mb-12 pb-7 animate-pulse" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex-1 space-y-3">
+          <div className="h-3 rounded" style={{ background: 'var(--surface-2)', width: 80 }} />
+          <div className="h-10 rounded" style={{ background: 'var(--surface-2)', width: '55%' }} />
         </div>
+        <div className="h-14 w-20 rounded flex-shrink-0" style={{ background: 'var(--surface-2)' }} />
       </div>
-      <div className="surface-border rounded-xl p-5 mb-4 animate-pulse">
-        <div className="h-3 bg-[var(--surface-2)] rounded w-1/3 mb-3" />
-        <div className="h-3 bg-[var(--surface-2)] rounded-full w-full" />
+      <div className="flex gap-8 mb-6" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+        {[70, 80, 80, 90].map((w, i) => (
+          <div key={i} className="h-3 rounded" style={{ background: 'var(--surface-2)', width: w }} />
+        ))}
       </div>
-      <div className="surface-border rounded-xl overflow-hidden animate-pulse">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="px-5 py-3.5 flex items-center gap-4 border-b border-[var(--border)]">
-            <div className="w-4 h-4 rounded-full bg-[var(--surface-2)] flex-shrink-0" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 bg-[var(--surface-2)] rounded w-2/5" />
-              <div className="h-2.5 bg-[var(--surface-2)] rounded w-1/4" />
-            </div>
-            <div className="h-3 bg-[var(--surface-2)] rounded w-20 hidden sm:block" />
+      <div style={{ borderTop: '1px solid var(--border)' }}>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="grid py-4 animate-pulse" style={{ gridTemplateColumns: '88px 1fr 160px 120px 100px', gap: 24, borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
+            <div className="h-2.5 rounded" style={{ background: 'var(--surface-2)', width: 60 }} />
+            <div className="h-3 rounded" style={{ background: 'var(--surface-2)', width: '50%' }} />
+            <div className="h-2.5 rounded" style={{ background: 'var(--surface-2)', width: 80 }} />
+            <div className="h-2.5 rounded" style={{ background: 'var(--surface-2)', width: 60 }} />
+            <div />
           </div>
         ))}
       </div>

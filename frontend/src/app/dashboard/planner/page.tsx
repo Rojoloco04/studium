@@ -382,24 +382,31 @@ function PrefsForm({ prefs, onChange, disabled }: PrefsFormProps) {
   const startOptions = HOUR_OPTIONS.filter((h) => h < prefs.day_end_hour);
 
   return (
-    <div className="surface-border rounded-xl p-5 space-y-5">
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-mono text-[var(--text-dim)]">Plan ahead</label>
-          <span className="text-sm font-medium text-[var(--text)]">{prefs.days_ahead} day{prefs.days_ahead !== 1 ? 's' : ''}</span>
+    <div className="space-y-5 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="pt-5">
+        <div className="flex items-center justify-between mb-3">
+          <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>
+            Plan ahead
+          </label>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--text)' }}>
+            {prefs.days_ahead} day{prefs.days_ahead !== 1 ? 's' : ''}
+          </span>
         </div>
         <input
           type="range" min={1} max={14} value={prefs.days_ahead} disabled={disabled}
           onChange={(e) => onChange({ ...prefs, days_ahead: Number(e.target.value) })}
           className="w-full accent-[var(--accent)] disabled:opacity-50"
+          style={{ height: 1, background: 'var(--border)' }}
         />
-        <div className="flex justify-between text-xs text-[var(--text-faint)] mt-1">
-          <span>1 day</span><span>14 days</span>
+        <div className="flex justify-between mt-1.5" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-faint2)' }}>
+          <span>1d</span><span>14d</span>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-[var(--text-dim)] mb-2">Schedule window</label>
+        <label className="block mb-2" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>
+          Schedule window
+        </label>
         <div className="flex items-center gap-2">
           <select
             value={prefs.day_start_hour} disabled={disabled}
@@ -407,15 +414,17 @@ function PrefsForm({ prefs, onChange, disabled }: PrefsFormProps) {
               const v = Number(e.target.value);
               onChange({ ...prefs, day_start_hour: v, day_end_hour: prefs.day_end_hour <= v ? v + 1 : prefs.day_end_hour });
             }}
-            className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
+            className="flex-1 px-3 py-2 text-sm focus:outline-none disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-mono)', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 2 }}
           >
             {startOptions.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
           </select>
-          <span className="text-[var(--text-faint)] text-sm">to</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-faint)', letterSpacing: '0.1em' }}>TO</span>
           <select
             value={prefs.day_end_hour} disabled={disabled}
             onChange={(e) => onChange({ ...prefs, day_end_hour: Number(e.target.value) })}
-            className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
+            className="flex-1 px-3 py-2 text-sm focus:outline-none disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-mono)', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 2 }}
           >
             {endOptions.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
           </select>
@@ -423,17 +432,22 @@ function PrefsForm({ prefs, onChange, disabled }: PrefsFormProps) {
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-[var(--text-dim)] mb-2">Max session length</label>
-        <div className="flex gap-2 flex-wrap">
+        <label className="block mb-2" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>
+          Max session length
+        </label>
+        <div className="flex gap-1.5 flex-wrap">
           {SESSION_STOPS.map((mins) => (
             <button
               key={mins} type="button" disabled={disabled}
               onClick={() => onChange({ ...prefs, max_session_minutes: mins })}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors disabled:opacity-50 ${
-                prefs.max_session_minutes === mins
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'surface-border text-[var(--text-dim)] hover:text-[var(--text)]'
-              }`}
+              className="disabled:opacity-50 transition-colors"
+              style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11,
+                padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 2,
+                background: prefs.max_session_minutes === mins ? 'var(--text)' : 'transparent',
+                color: prefs.max_session_minutes === mins ? 'var(--background)' : 'var(--text-faint)',
+                cursor: 'pointer',
+              }}
             >
               {mins < 60 ? `${mins}m` : `${mins / 60}h`}
             </button>
@@ -449,24 +463,25 @@ function PrefsForm({ prefs, onChange, disabled }: PrefsFormProps) {
 function SavedBlockCard({ block }: { block: StudyBlock }) {
   const deleteBlock = useDeleteStudyBlock();
   return (
-    <div className="surface-border rounded-xl p-4 flex items-start gap-3">
-      <div className="flex-1 space-y-1 min-w-0">
-        <p className="text-sm font-medium text-[var(--text)] truncate">{block.title}</p>
-        {block.description && <p className="text-xs text-[var(--text-dim)] line-clamp-2">{block.description}</p>}
-        <div className="flex items-center gap-2 text-xs text-[var(--text-faint)] font-mono pt-1">
-          <Clock size={11} />
-          <span>{formatTime(block.start_at)} – {formatTime(block.end_at)}</span>
-          <span>·</span>
-          <span>{block.duration_minutes}m</span>
-        </div>
+    <div className="group flex items-baseline gap-6 py-3" style={{ borderBottom: '1px solid var(--border-soft)' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap', flexShrink: 0, width: 120 }}>
+        {formatTime(block.start_at)} – {formatTime(block.end_at)}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm truncate" style={{ color: 'var(--text)' }}>{block.title}</p>
+        {block.description && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-faint)' }}>{block.description}</p>}
       </div>
+      <span className="flex-shrink-0" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)' }}>
+        {block.duration_minutes}m
+      </span>
       <button
         onClick={() => deleteBlock.mutate(block.id, { onError: () => toast.error('Failed to delete block') })}
         disabled={deleteBlock.isPending}
-        className="flex-shrink-0 p-1.5 rounded-lg text-[var(--text-faint)] hover:text-[var(--danger)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50"
+        className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30"
+        style={{ color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
         aria-label="Delete study block"
       >
-        <Trash2 size={13} />
+        <Trash2 size={12} />
       </button>
     </div>
   );
@@ -542,7 +557,7 @@ export default function PlannerPage() {
 
   if (gcalLoading) {
     return (
-      <div className="p-6 max-w-2xl mx-auto flex items-center gap-2 text-[var(--text-faint)]">
+      <div className="px-10 py-14 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
         <Loader2 size={16} className="animate-spin" />
         <span className="text-sm">Loading…</span>
       </div>
@@ -553,22 +568,25 @@ export default function PlannerPage() {
 
   if (!gcalConnected) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <div className="px-10 py-14 max-w-[1080px]">
         <div className="mb-8">
-          <h1 className="font-display font-700 text-2xl text-[var(--text)]">Study Planner</h1>
-          <p className="text-[var(--text-dim)] text-sm mt-1">AI-generated study blocks synced to Google Calendar</p>
-        </div>
-        <div className="surface-border rounded-xl p-10 text-center space-y-4">
-          <Calendar size={32} className="text-[var(--text-faint)] mx-auto" />
-          <div>
-            <h3 className="font-display font-600 text-base text-[var(--text)] mb-1">Connect Google Calendar first</h3>
-            <p className="text-[var(--text-dim)] text-sm">
-              The planner needs access to your Google Calendar to read your schedule and add study blocks.
-            </p>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 12 }}>
+            Study Planner
           </div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 1, letterSpacing: '-0.02em', fontWeight: 400 }}>
+            Make <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>time</em> for<br />the work ahead.
+          </h1>
+        </div>
+        <div className="py-16 text-center rounded" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+          <Calendar size={28} className="mx-auto mb-4" style={{ color: 'var(--text-faint)' }} />
+          <h3 className="mb-2" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400 }}>Connect Google Calendar first</h3>
+          <p className="text-sm mb-5 max-w-xs mx-auto" style={{ color: 'var(--text-faint)' }}>
+            The planner needs access to your Google Calendar to read your schedule and add study blocks.
+          </p>
           <Link
             href="/dashboard/settings"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)', color: 'var(--background)', fontWeight: 500 }}
           >
             Go to Settings
           </Link>
@@ -580,10 +598,17 @@ export default function PlannerPage() {
   // ── Connected ────────────────────────────────────────────────
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-8">
-      <div>
-        <h1 className="font-display font-700 text-2xl text-[var(--text)]">Study Planner</h1>
-        <p className="text-[var(--text-dim)] text-sm mt-1">AI-generated study blocks synced to Google Calendar</p>
+    <div className="px-10 py-14 max-w-[1080px] space-y-8">
+      <div className="mb-0">
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 12 }}>
+          Study Planner · Week {Math.ceil((new Date().getDate()) / 7)}
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 1, letterSpacing: '-0.02em', fontWeight: 400 }}>
+          Make <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>time</em> for<br />the work ahead.
+        </h1>
+        <p className="mt-3" style={{ fontSize: 13, color: 'var(--text-faint)' }}>
+          AI-generated study blocks, synced to your Google Calendar.
+        </p>
       </div>
 
       {/* ── Calendar — always visible at top ── */}
@@ -604,20 +629,20 @@ export default function PlannerPage() {
       {plannerState === 'idle' && (
         <div className="space-y-6">
           <PrefsForm prefs={prefs} onChange={setPrefs} disabled={generating} />
-
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'var(--text)', color: 'var(--background)', padding: '12px 20px', border: 'none', borderRadius: 2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               {generating
-                ? <><Loader2 size={14} className="animate-spin" /> Generating…</>
-                : <><Sparkles size={14} /> Generate Study Plan</>
+                ? <><Loader2 size={13} className="animate-spin" /> Generating…</>
+                : <><Sparkles size={13} /> Generate Study Plan</>
               }
             </button>
-            <p className="text-xs text-[var(--text-faint)]">
-              Usually takes 15&ndash;30 seconds. You can navigate away &mdash; we&apos;ll notify you when it&apos;s ready.
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+              Usually takes 15–30 seconds. You can navigate away — we'll notify you when it's ready.
             </p>
           </div>
         </div>
@@ -627,52 +652,63 @@ export default function PlannerPage() {
       {plannerState === 'previewing' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--text-dim)]">
-              {proposedBlocks.length} study block{proposedBlocks.length !== 1 ? 's' : ''} proposed
-            </p>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>
+              Proposed sessions · {proposedBlocks.length} total
+            </div>
             <button
               onClick={handleRegenerate}
-              className="flex items-center gap-1.5 text-xs text-[var(--text-faint)] hover:text-[var(--text)] transition-colors"
+              className="flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--text)]"
+              style={{ color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              <RefreshCw size={12} />
-              Regenerate
+              <RefreshCw size={11} /> Regenerate
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-8" style={{ borderTop: '1px solid var(--border)' }}>
             {groupByDate(proposedBlocks).map(([day, blocks]) => (
-              <div key={day}>
-                <p className="text-xs font-mono text-[var(--text-faint)] mb-3 uppercase tracking-wide">
-                  {formatDateLabel(blocks[0].start_at)}
-                </p>
-                <div className="space-y-2">
-                  {blocks.map((b, i) => (
-                    <div key={i} className="surface-border rounded-xl p-4 space-y-1">
-                      <p className="text-sm font-medium text-[var(--text)]">{b.title}</p>
-                      {b.description && <p className="text-xs text-[var(--text-dim)]">{b.description}</p>}
-                      <div className="flex items-center gap-2 text-xs text-[var(--text-faint)] font-mono pt-1">
-                        <Clock size={11} />
-                        <span>{formatTime(b.start_at)} – {formatTime(b.end_at)}</span>
-                        <span>·</span>
-                        <span>{b.duration_minutes}m</span>
-                      </div>
-                    </div>
-                  ))}
+              <div key={day} className="pt-4">
+                <div className="flex items-baseline justify-between mb-3">
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+                    {formatDateLabel(blocks[0].start_at)}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint2)' }}>
+                    {blocks.length} session{blocks.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
+                {blocks.map((b, i) => (
+                  <div key={i} className="grid items-baseline py-3" style={{ gridTemplateColumns: '120px 1fr 60px', gap: 20, borderBottom: '1px solid var(--border-soft)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>
+                      {formatTime(b.start_at)} – {formatTime(b.end_at)}
+                    </span>
+                    <div>
+                      <p className="text-sm" style={{ color: 'var(--text)' }}>{b.title}</p>
+                      {b.description && <p className="text-xs mt-0.5" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint)' }}>{b.description}</p>}
+                    </div>
+                    <span className="text-right" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)' }}>
+                      {b.duration_minutes}m
+                    </span>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
 
-          <button
-            onClick={handlePush}
-            disabled={confirmPlan.isPending}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {confirmPlan.isPending
-              ? <><Loader2 size={14} className="animate-spin" /> Adding to Calendar…</>
-              : <><CheckCircle2 size={14} /> Add to Google Calendar</>
-            }
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handlePush}
+              disabled={confirmPlan.isPending}
+              className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'var(--text)', color: 'var(--background)', padding: '12px 20px', border: 'none', borderRadius: 2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              {confirmPlan.isPending
+                ? <><Loader2 size={13} className="animate-spin" /> Adding to Calendar…</>
+                : <><CheckCircle2 size={13} /> Add to Google Calendar</>
+              }
+            </button>
+            <button onClick={handleRegenerate} className="text-sm transition-colors hover:text-[var(--text)]" style={{ color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Discard proposal
+            </button>
+          </div>
         </div>
       )}
 
@@ -680,34 +716,36 @@ export default function PlannerPage() {
       {plannerState === 'confirmed' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--text-dim)]">
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>
               {savedBlocks.length} block{savedBlocks.length !== 1 ? 's' : ''} scheduled
-            </p>
+            </div>
             <button
               onClick={handleRegenerate}
               disabled={generating}
-              className="flex items-center gap-1.5 text-xs text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--text)] disabled:opacity-50"
+              style={{ color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              <Sparkles size={12} />
-              Regenerate Plan
+              <Sparkles size={11} /> Regenerate Plan
             </button>
           </div>
 
           {blocksLoading ? (
-            <div className="flex items-center gap-2 text-[var(--text-faint)] text-sm">
-              <Loader2 size={14} className="animate-spin" />
-              Loading blocks…
+            <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-faint)' }}>
+              <Loader2 size={14} className="animate-spin" /> Loading blocks…
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-8" style={{ borderTop: '1px solid var(--border)' }}>
               {groupByDate(savedBlocks).map(([day, blocks]) => (
-                <div key={day}>
-                  <p className="text-xs font-mono text-[var(--text-faint)] mb-3 uppercase tracking-wide">
-                    {formatDateLabel(blocks[0].start_at)}
-                  </p>
-                  <div className="space-y-2">
-                    {blocks.map((b) => <SavedBlockCard key={b.id} block={b} />)}
+                <div key={day} className="pt-4">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+                      {formatDateLabel(blocks[0].start_at)}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-faint2)' }}>
+                      {blocks.length} session{blocks.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
+                  {blocks.map((b) => <SavedBlockCard key={b.id} block={b} />)}
                 </div>
               ))}
             </div>

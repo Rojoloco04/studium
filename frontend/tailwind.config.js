@@ -24,7 +24,8 @@ module.exports = {
       fontFamily: {
         sans: ['var(--font-sans)', 'sans-serif'],
         mono: ['var(--font-mono)', 'monospace'],
-        display: ['var(--font-display)', 'sans-serif'],
+        display: ['var(--font-display)', 'serif'],
+        serif: ['var(--font-display)', 'serif'],
       },
       borderRadius: {
         DEFAULT: '6px',
