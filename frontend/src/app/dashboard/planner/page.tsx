@@ -186,9 +186,9 @@ function WeekCalendar({
   const hasConfirmed = confirmedBlocks.length > 0;
 
   return (
-    <div className="surface-border rounded-xl overflow-hidden text-xs">
+    <div className="overflow-hidden text-xs" style={{ border: '1px solid var(--border)', borderRadius: 2 }}>
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
           <button
             disabled={page === 0}
             onClick={() => setPage((p) => p - 1)}
@@ -208,7 +208,7 @@ function WeekCalendar({
       )}
 
       {/* Day header */}
-      <div className="flex border-b border-[var(--border)] bg-[var(--surface)]">
+      <div className="flex border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
         <div className="w-9 flex-shrink-0" />
         {pageDays.map((day, i) => (
           <div
@@ -226,9 +226,9 @@ function WeekCalendar({
       </div>
 
       {/* Scrollable time grid */}
-      <div ref={scrollRef} className="flex overflow-y-auto max-h-[360px]">
+      <div ref={scrollRef} className="flex overflow-y-auto max-h-[360px]" style={{ background: 'var(--background)' }}>
         {/* Time labels */}
-        <div className="w-9 flex-shrink-0 relative bg-[var(--surface)]" style={{ height: totalHeight }}>
+        <div className="w-9 flex-shrink-0 relative" style={{ height: totalHeight, background: 'var(--surface)' }}>
           {timeLabels.map((h, i) => (
             <div
               key={h}
@@ -245,7 +245,7 @@ function WeekCalendar({
           <div
             key={di}
             className="flex-1 relative border-l border-[var(--border)]"
-            style={{ height: totalHeight }}
+            style={{ height: totalHeight, background: 'var(--background)' }}
           >
             {timeLabels.map((_, i) => (
               <div
@@ -268,7 +268,7 @@ function WeekCalendar({
                   style={{ top: p.top, height: p.height }}
                 >
                   {p.height >= 18 && (
-                    <p className="px-1 text-[var(--text-dim)] truncate leading-tight pt-px" style={{ fontSize: '9px' }}>
+                    <p className="px-1 text-[var(--text-dim)] truncate leading-tight pt-px" style={{ fontSize: '10px' }}>
                       {e.title || '(busy)'}
                     </p>
                   )}
@@ -286,7 +286,7 @@ function WeekCalendar({
                   style={{ top: p.top, height: p.height }}
                 >
                   {p.height >= 18 && (
-                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px" style={{ fontSize: '9px' }}>
+                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px" style={{ fontSize: '10px' }}>
                       {b.title}
                     </p>
                   )}
@@ -305,7 +305,7 @@ function WeekCalendar({
                   style={{ top: p.top, height: p.height }}
                 >
                   {p.height >= 18 && (
-                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px pr-3" style={{ fontSize: '9px' }}>
+                    <p className="px-1 text-[var(--accent)] truncate leading-tight pt-px pr-3" style={{ fontSize: '10px' }}>
                       {b.title}
                     </p>
                   )}
@@ -327,7 +327,7 @@ function WeekCalendar({
       </div>
 
       {/* Legend + loading indicator */}
-      <div className="flex items-center gap-4 px-3 py-2 border-t border-[var(--border)] bg-[var(--surface)]">
+      <div className="flex items-center gap-4 px-3 py-2 border-t border-[var(--border)]" style={{ background: 'var(--surface)' }}>
         {eventsLoading ? (
           <div className="flex items-center gap-1.5 text-[var(--text-faint)]">
             <Loader2 size={10} className="animate-spin" />
@@ -642,7 +642,7 @@ export default function PlannerPage() {
               }
             </button>
             <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
-              Usually takes 15–30 seconds. You can navigate away — we'll notify you when it's ready.
+              Usually takes 15–30 seconds. You can navigate away — we&apos;ll notify you when it&apos;s ready.
             </p>
           </div>
         </div>
