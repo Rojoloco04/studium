@@ -1,3 +1,5 @@
+# Deprecated - Not currently in development
+
 # Studium
 
 AI-powered course tracker and study planner. Syncs with Canvas LMS, parses syllabi with Gemini, and schedules study blocks into Google Calendar.
